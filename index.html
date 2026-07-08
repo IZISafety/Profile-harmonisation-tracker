@@ -410,7 +410,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <h2 id="detail-title" style="margin-bottom:0">Detailed Tracking by Subsidiary</h2>
         <button id="migrate-dates-btn" onclick="migrateLegacyDates()" style="display:none;background:#1F3864;color:white;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;">
-          📅 Assign today's date to all checked steps
+          📅 Assign dates to checked steps
         </button>
       </div>
       <div class="steps-legend">
@@ -970,21 +970,115 @@ function updateLockUI() {
 }
 
 function migrateLegacyDates() {
-  var today = new Date().toISOString().split('T')[0];
-  var count = 0;
+  // Collect all legacy true steps
+  var items = [];
   Object.keys(state).forEach(function(k) {
     STEPS.forEach(function(s) {
       if(state[k][s.key] === true) {
-        state[k][s.key] = { done: true, date: today };
-        count++;
+        var parts = k.split('|');
+        items.push({ key: k, stepKey: s.key, label: parts.slice(1).join('|') + ' — ' + (s.labelEN) });
       }
     });
   });
-  if(count > 0) {
-    scheduleStepSave();
-    renderAll();
-    showSaveIndicator(count + ' steps updated with today’s date');
-  }
+  if(items.length === 0) return;
+
+  // Build modal content
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;display:flex;align-items:center;justify-content:center;';
+
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:white;border-radius:12px;padding:28px;width:560px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.25);';
+
+  var title = document.createElement('h3');
+  title.textContent = 'Assign dates to checked steps';
+  title.style.cssText = 'font-size:15px;color:#1F3864;margin-bottom:6px;';
+  modal.appendChild(title);
+
+  var sub = document.createElement('p');
+  sub.textContent = 'Set an estimated completion date for each step below. Leave blank to keep unassigned.';
+  sub.style.cssText = 'font-size:12px;color:#888;margin-bottom:20px;';
+  modal.appendChild(sub);
+
+  var inputs = []; // [{key, stepKey, input}]
+
+  // Group by subsidiary
+  var byKey = {};
+  items.forEach(function(item) {
+    if(!byKey[item.key]) byKey[item.key] = [];
+    byKey[item.key].push(item);
+  });
+
+  Object.keys(byKey).forEach(function(k) {
+    var parts = k.split('|');
+    var region = parts[0], sub_name = parts.slice(1).join('|');
+
+    var group = document.createElement('div');
+    group.style.cssText = 'margin-bottom:14px;border:1px solid #eef0f3;border-radius:8px;overflow:hidden;';
+
+    var groupHeader = document.createElement('div');
+    groupHeader.style.cssText = 'background:#f0f4ff;padding:8px 12px;font-size:11px;font-weight:700;color:#1F3864;display:flex;gap:8px;align-items:center;';
+    var regionSpan = document.createElement('span');
+    regionSpan.textContent = region;
+    regionSpan.style.cssText = 'background:#e8eef8;color:#2E5FA3;padding:1px 6px;border-radius:3px;font-size:10px;';
+    groupHeader.appendChild(regionSpan);
+    groupHeader.appendChild(document.createTextNode(sub_name));
+    group.appendChild(groupHeader);
+
+    byKey[k].forEach(function(item) {
+      var step = STEPS.find(function(s){ return s.key === item.stepKey; });
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid #f0f0f0;';
+
+      var lbl = document.createElement('span');
+      lbl.textContent = step ? step.descEN : item.stepKey;
+      lbl.style.cssText = 'font-size:12px;color:#333;flex:1;';
+
+      var input = document.createElement('input');
+      input.type = 'date';
+      input.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:4px 8px;font-size:12px;font-family:Arial,sans-serif;';
+
+      row.appendChild(lbl);
+      row.appendChild(input);
+      group.appendChild(row);
+      inputs.push({ key: item.key, stepKey: item.stepKey, input: input });
+    });
+
+    modal.appendChild(group);
+  });
+
+  // Buttons
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:10px;margin-top:20px;justify-content:flex-end;';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'background:#f0f0f0;color:#666;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
+  cancelBtn.onclick = function() { document.body.removeChild(overlay); };
+
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save dates';
+  saveBtn.style.cssText = 'background:#2E5FA3;color:white;border:none;border-radius:7px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
+  saveBtn.onclick = function() {
+    var count = 0;
+    inputs.forEach(function(item) {
+      var d = item.input.value;
+      if(d) {
+        state[item.key][item.stepKey] = { done: true, date: d };
+        count++;
+      }
+    });
+    document.body.removeChild(overlay);
+    if(count > 0) { scheduleStepSave(); renderAll(); showSaveIndicator(count + ' dates saved'); }
+  };
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+
+  // Close on outside click
+  overlay.addEventListener('click', function(e) { if(e.target === overlay) document.body.removeChild(overlay); });
+  document.body.appendChild(overlay);
 }
 
 function stepDone(val) {
