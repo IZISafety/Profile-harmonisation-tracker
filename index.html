@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IZI Safety - Planning Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f4f8; color: #1a1a2e; }
+
+  header {
+    background: linear-gradient(135deg, #1F3864, #2E5FA3);
+    color: white; padding: 20px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header span { font-size: 12px; opacity: 0.8; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+
+  .lang-toggle { display: flex; border: 2px solid rgba(255,255,255,0.4); border-radius: 20px; overflow: hidden; }
+  .lang-btn { padding: 5px 14px; cursor: pointer; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.6); background: transparent; transition: all 0.2s; border: none; }
+  .lang-btn.active { background: rgba(255,255,255,0.25); color: white; }
+  .lang-btn:hover { color: white; }
+
+  .lock-indicator {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 600;
+    cursor: default; user-select: none; transition: all 0.3s;
+    position: relative;
+  }
+  .lock-indicator.unlocked { background: rgba(112,173,71,0.25); border-color: rgba(112,173,71,0.5); color: #c8ffc0; }
+  .lock-icon { font-size: 13px; }
+  .lock-tip {
+    display: none;
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: rgba(15,20,40,0.92); color: #fff;
+    font-size: 11px; font-weight: 400; line-height: 1.5;
+    padding: 7px 11px; border-radius: 7px; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    pointer-events: none; z-index: 999;
+  }
+  .lock-tip::before {
+    content: ''; position: absolute; top: -5px; right: 18px;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-bottom: 5px solid rgba(15,20,40,0.92);
+  }
+  .lock-indicator:hover .lock-tip { display: block; }
+
+  .tabs { display: flex; background: #1F3864; padding: 0 32px; }
+  .tab { padding: 12px 24px; cursor: pointer; color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.2s; }
+  .tab.active { color: white; border-bottom-color: #F4B942; }
+  .tab:hover { color: white; }
+
+  .container { padding: 24px 32px; }
+
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 8px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-left: 4px solid #2E5FA3; }
+  .card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card .value { font-size: 28px; font-weight: 700; color: #1F3864; margin-top: 4px; }
+  .card.green { border-left-color: #70AD47; } .card.green .value { color: #4a7a2e; }
+  .card.orange { border-left-color: #F4B942; } .card.orange .value { color: #c8912a; }
+
+  .gantt-wrap { background: white; border-radius: 8px; padding: 24px 28px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .month-row { display: flex; border-bottom: 0.5px solid #e0e0e0; padding-bottom: 8px; margin-bottom: 6px; }
+  .month-cell { flex: 1; font-size: 11px; color: #999; text-align: center; letter-spacing: 0.03em; }
+  .phase-row { display: flex; align-items: center; height: 36px; margin-bottom: 6px; cursor: pointer; }
+  .phase-row:hover .bar { filter: brightness(1.08); }
+  .bar-area { flex: 1; position: relative; height: 100%; }
+  .bar {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    height: 26px; border-radius: 6px;
+    display: flex; align-items: center; padding: 0 10px;
+    font-size: 12px; font-weight: 500; color: #fff;
+    overflow: hidden; transition: all 0.2s ease;
+  }
+  .grid-line { position: absolute; top: 0; bottom: 0; width: 0.5px; background: #ebebeb; pointer-events: none; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge.not-started { background: #f0f0f0; color: #666; }
+  .badge.in-progress { background: #fff3cd; color: #856404; }
+  .badge.completed { background: #d4edda; color: #155724; }
+
+  .detail-wrap { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .detail-wrap h2 { font-size: 14px; color: #1F3864; margin-bottom: 12px; font-weight: 700; }
+
+  .steps-legend { background: #f0f4ff; border: 1px solid #c8d8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; }
+  .steps-legend-title { font-weight: 700; color: #1F3864; margin-bottom: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .steps-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step-pill { display: flex; align-items: flex-start; gap: 8px; background: white; border: 1px solid #dde6f5; border-radius: 6px; padding: 8px 10px; font-size: 11px; line-height: 1.4; }
+  .step-pill .snum { background: #2E5FA3; color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filters select, .filters input { border: 1px solid #ddd; border-radius: 6px; padding: 7px 12px; font-size: 12px; color: #333; background: white; }
+  .clear-filters-btn {
+    display: none; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid #ddd; border-radius: 6px;
+    padding: 7px 12px; font-size: 12px; color: #888; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .clear-filters-btn:hover { background: #fff0f0; border-color: #f0a0a0; color: #c00; }
+  .clear-filters-btn.visible { display: flex; }
+
+  .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .detail-table th { background: #2E5FA3; color: white; padding: 10px 8px; text-align: center; font-weight: 600; white-space: nowrap; }
+  .detail-table th.left { text-align: left; padding-left: 12px; }
+  .detail-table td { padding: 8px; border-bottom: 1px solid #eef0f3; vertical-align: middle; text-align: center; }
+  .detail-table td.left { text-align: left; }
+  .detail-table tr:hover td { background: #f0f4ff; }
+  .detail-table tr:nth-child(even) td { background: #f7f9fc; }
+  .detail-table tr:nth-child(even):hover td { background: #f0f4ff; }
+
+  .drag-handle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; cursor: grab; color: #bbb; font-size: 13px;
+    margin-right: 6px; user-select: none; vertical-align: middle;
+    transition: color 0.15s;
+  }
+  .drag-handle:hover { color: #2E5FA3; }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle.locked { cursor: not-allowed; opacity: 0.2; pointer-events: none; }
+  tr.dragging td { background: #e8f0ff !important; opacity: 0.7; }
+  tr.drag-over td { border-top: 2px solid #2E5FA3; }
+
+  .region-tag { display: inline-block; background: #e8eef8; color: #2E5FA3; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+
+  .step-check { font-size: 15px; user-select: none; transition: opacity 0.2s; }
+  .step-check.editable { cursor: pointer; }
+  .step-check.locked { cursor: not-allowed; opacity: 0.5; }
+  .step-check.done { color: #70AD47; opacity: 1; }
+
+  .prog-wrap { background: #eef0f3; border-radius: 4px; height: 6px; width: 70px; display: inline-block; vertical-align: middle; }
+  .prog-bar { height: 6px; border-radius: 4px; background: #2E5FA3; transition: width 0.3s; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .save-indicator {
+    position: fixed; bottom: 20px; right: 24px;
+    background: #1F3864; color: white; padding: 8px 16px;
+    border-radius: 20px; font-size: 12px; font-weight: 600;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .save-indicator.visible { opacity: 1; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 14px; padding: 32px; width: 360px; box-shadow: 0 8px 40px rgba(0,0,0,0.25); text-align: center; }
+  .modal .lock-big { font-size: 40px; margin-bottom: 12px; }
+  .modal h3 { font-size: 16px; color: #1F3864; margin-bottom: 6px; font-weight: 700; }
+  .modal p { font-size: 12px; color: #888; margin-bottom: 20px; }
+  .pin-input { width: 100%; border: 2px solid #ddd; border-radius: 8px; padding: 12px 16px; font-size: 16px; text-align: center; letter-spacing: 3px; margin-bottom: 8px; font-family: Arial, sans-serif; transition: border-color 0.2s; }
+  .pin-input:focus { outline: none; border-color: #2E5FA3; }
+  .pin-input.error { border-color: #C00000; animation: shake 0.3s; }
+  .pin-error { color: #C00000; font-size: 12px; height: 16px; margin-bottom: 12px; }
+  .modal-btns { display: flex; gap: 10px; }
+  .btn { padding: 10px 0; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; flex: 1; }
+  .btn-primary { background: #2E5FA3; color: white; }
+  .btn-primary:hover { background: #1F3864; }
+  .btn-secondary { background: #f0f0f0; color: #666; }
+
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  .loading-overlay { position: fixed; inset: 0; background: #f0f4f8; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; transition: opacity 0.4s; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner { width: 36px; height: 36px; border: 3px solid #dde6f5; border-top-color: #2E5FA3; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .comms-wrap { background: white; border-radius: 8px; padding: 24px 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 24px; }
+  .comms-wrap h2 { font-size: 14px; color: #1F3864; font-weight: 700; margin-bottom: 4px; }
+  .comms-wrap .comms-sub { font-size: 12px; color: #888; margin-bottom: 20px; }
+  .comms-section-title { font-size: 12px; font-weight: 700; color: #2E5FA3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #e8eef8; }
+  .comms-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+  .comms-card { border: 1px solid #dde6f5; border-radius: 8px; overflow: hidden; }
+  .comms-card-header { background: #f0f4ff; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+  .comms-card-header .lang-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px; }
+  .comms-card-header .lang-badge.fr { background: #1F3864; color: white; }
+  .comms-card-header .lang-badge.en { background: #2E5FA3; color: white; }
+  .comms-card-header .channel-badge { font-size: 10px; color: #888; background: white; border: 1px solid #ddd; padding: 2px 8px; border-radius: 10px; }
+  .comms-card-body { padding: 14px; background: #fafbfe; font-size: 12px; color: #333; line-height: 1.7; white-space: pre-wrap; font-family: Arial, sans-serif; max-height: 220px; overflow-y: auto; border-top: 1px solid #eef0f3; }
+  .comms-card-footer { padding: 10px 14px; background: white; border-top: 1px solid #eef0f3; display: flex; justify-content: flex-end; }
+  .copy-btn { background: #2E5FA3; color: white; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+  .copy-btn:hover { background: #1F3864; }
+  .copy-btn.copied { background: #70AD47; }
+
+  /* ── EXCEL-STYLE COLUMN FILTERS ── */
+  .col-filter-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; margin-left: 5px; cursor: pointer;
+    background: rgba(255,255,255,0.2); border-radius: 3px; font-size: 9px;
+    vertical-align: middle; transition: background 0.15s; border: none; color: white;
+    flex-shrink: 0;
+  }
+  .col-filter-btn:hover { background: rgba(255,255,255,0.4); }
+  .col-filter-btn.active { background: #F4B942; color: #1F3864; }
+  .col-filter-popup {
+    display: none; position: fixed; z-index: 500;
+    background: white; border: 1px solid #c8d8f0; border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); padding: 8px 0; min-width: 180px;
+    font-size: 12px; color: #1a1a2e;
+  }
+  .col-filter-popup.open { display: block; }
+  .col-filter-popup-title { padding: 6px 14px 8px; font-weight: 600; font-size: 11px;
+    color: #2E5FA3; text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 1px solid #eef0f3; margin-bottom: 4px; }
+  .col-filter-option { display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; cursor: pointer; transition: background 0.1s; }
+  .col-filter-option:hover { background: #f0f4ff; }
+  .col-filter-option input[type=checkbox] { cursor: pointer; width: 13px; height: 13px; }
+  .col-filter-popup-footer { padding: 8px 14px 2px; border-top: 1px solid #eef0f3; margin-top: 4px;
+    display: flex; gap: 6px; }
+  .col-filter-apply { flex: 1; background: #2E5FA3; color: white; border: none; border-radius: 5px;
+    padding: 5px 0; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .col-filter-apply:hover { background: #1F3864; }
+  .col-filter-reset { flex: 1; background: #f0f0f0; color: #666; border: none; border-radius: 5px;
+    padding: 5px 0; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .col-filter-reset:hover { background: #e0e0e0; }
+  .detail-table th { position: relative; }
+
+  /* ── COMMENTS ── */
+  .comment-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: transparent; border: 1px solid #dde6f5; border-radius: 6px;
+    padding: 3px 8px; font-size: 11px; cursor: pointer;
+    color: #888; transition: all 0.15s; white-space: nowrap; font-family: Arial, sans-serif;
+  }
+  .comment-btn:hover { background: #f0f4ff; border-color: #2E5FA3; color: #2E5FA3; }
+  .comment-btn.has-comment { background: #f0f4ff; border-color: #2E5FA3; color: #2E5FA3; font-weight: 500; }
+  .comment-row td { padding: 0 !important; border-bottom: 1px solid #eef0f3 !important; background: #f8faff !important; }
+  .comment-box { display: flex; gap: 8px; align-items: flex-start; padding: 10px 16px 10px 40px; border-top: 1px dashed #c8d8f0; }
+  .comment-textarea {
+    flex: 1; border: 1.5px solid #dde6f5; border-radius: 7px;
+    padding: 8px 10px; font-size: 12px; font-family: Arial, sans-serif;
+    resize: vertical; min-height: 56px; outline: none;
+    transition: border-color 0.2s; background: white;
+  }
+  .comment-textarea:focus { border-color: #2E5FA3; }
+  .comment-save-btn {
+    background: #2E5FA3; color: white; border: none; border-radius: 6px;
+    padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    white-space: nowrap; transition: background 0.2s; font-family: Arial, sans-serif;
+  }
+  .comment-save-btn:hover { background: #1F3864; }
+
+  /* ── NOTES TAB ── */
+  .notes-section { margin-bottom: 28px; }
+  .notes-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #f0f4ff; border: 1px solid #c8d8f0;
+    border-radius: 8px 8px 0 0; cursor: pointer; user-select: none;
+  }
+  .notes-section-header h3 { font-size: 13px; font-weight: 600; color: #1F3864; margin: 0; }
+  .notes-section-header .section-toggle { font-size: 12px; color: #888; }
+  .notes-section-body { border: 1px solid #c8d8f0; border-top: none; border-radius: 0 0 8px 8px; padding: 16px; background: white; }
+  .notes-section-body.collapsed { display: none; }
+
+  .note-item { border: 1px solid #eef0f3; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; background: #fafbfe; position: relative; }
+  .note-item:last-child { margin-bottom: 0; }
+  .note-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .note-priority { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
+  .note-priority.high { background: #FDDCDC; color: #A12B2B; }
+  .note-priority.medium { background: #FEF3C7; color: #92400E; }
+  .note-priority.low { background: #B7E1CD; color: #1a6b4a; }
+  .note-priority.resolved { background: #DCFCE7; color: #166534; }
+  .note-title { font-size: 13px; font-weight: 600; color: #1F3864; flex: 1; }
+  .note-date { font-size: 11px; color: #aaa; }
+  .note-body { font-size: 12px; color: #555; line-height: 1.6; white-space: pre-wrap; }
+  .note-zone { display: inline-block; background: #e8eef8; color: #2E5FA3; padding: 1px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-right: 6px; }
+  .note-delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; color: #ccc; font-size: 14px; padding: 2px 6px; border-radius: 4px; }
+  .note-delete-btn:hover { background: #fff0f0; color: #c00; }
+  .note-edit-btn { position: absolute; top: 10px; right: 36px; background: none; border: none; cursor: pointer; color: #bbb; font-size: 13px; padding: 2px 6px; border-radius: 4px; }
+  .note-edit-btn:hover { background: #f0f4ff; color: #2E5FA3; }
+  .note-status { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; margin-right: 6px; }
+  .note-status.open     { background: #FDDCDC; color: #A12B2B; }
+  .note-status.watching { background: #FEF3C7; color: #92400E; }
+  .note-status.resolved { background: #DCFCE7; color: #166534; }
+  .note-edit-form { margin-top: 10px; padding: 10px; background: #f0f4ff; border-radius: 8px; border: 1px dashed #c8d8f0; display: none; }
+  .note-edit-form input, .note-edit-form textarea, .note-edit-form select {
+    width: 100%; border: 1.5px solid #dde6f5; border-radius: 6px; padding: 6px 10px;
+    font-size: 12px; font-family: Arial, sans-serif; outline: none; margin-bottom: 6px;
+    background: white; box-sizing: border-box;
+  }
+  .note-edit-form textarea { min-height: 60px; resize: vertical; }
+  .note-edit-save { background: #2E5FA3; color: white; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: Arial, sans-serif; margin-right: 6px; }
+  .note-edit-cancel { background: #f0f0f0; color: #666; border: none; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: Arial, sans-serif; }
+
+  .add-note-form { border: 1.5px dashed #c8d8f0; border-radius: 8px; padding: 16px; margin-top: 8px; background: #f8faff; }
+  .add-note-form input, .add-note-form textarea, .add-note-form select {
+    width: 100%; border: 1.5px solid #dde6f5; border-radius: 7px; padding: 8px 10px;
+    font-size: 12px; font-family: Arial, sans-serif; outline: none; margin-bottom: 8px;
+    background: white; transition: border-color 0.2s; box-sizing: border-box;
+  }
+  .add-note-form input:focus, .add-note-form textarea:focus, .add-note-form select:focus { border-color: #2E5FA3; }
+  .add-note-form textarea { min-height: 80px; resize: vertical; }
+  .add-note-row { display: flex; gap: 8px; }
+  .add-note-row input, .add-note-row select { margin-bottom: 8px; }
+  .add-note-submit { background: #2E5FA3; color: white; border: none; border-radius: 7px; padding: 8px 18px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: Arial, sans-serif; }
+  .add-note-submit:hover { background: #1F3864; }
+  .add-note-cancel { background: #f0f0f0; color: #666; border: none; border-radius: 7px; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: Arial, sans-serif; }
+  .add-note-toggle { background: transparent; border: 1.5px dashed #2E5FA3; color: #2E5FA3; border-radius: 7px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: Arial, sans-serif; margin-top: 8px; }
+  .add-note-toggle:hover { background: #f0f4ff; }
+</style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCsEXFHj83mhlXsn-bN-MAGTYdBR0X6sUI",
+      authDomain: "izi-tracker-6d69a.firebaseapp.com",
+      projectId: "izi-tracker-6d69a",
+      storageBucket: "izi-tracker-6d69a.firebasestorage.app",
+      messagingSenderId: "265890994822",
+      appId: "1:265890994822:web:903ffa84cfa1278dbb0f07"
+    };
+    try {
+      const app = firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const DOC_REF = db.collection('tracker').doc('state');
+      window.firebaseLoad = async function() {
+        try { const snap = await DOC_REF.get(); if (snap.exists) return snap.data(); } catch(e) { console.warn('Firebase load failed:', e); } return null;
+      };
+      window.firebaseSave = async function(data) {
+        try { await DOC_REF.set(data, { merge: true }); return true; } catch(e) { console.warn('Firebase save failed:', e); return false; }
+      };
+      window.firebaseSubscribe = function(callback) {
+        try { return DOC_REF.onSnapshot(function(snap) { if (snap.exists) callback(snap.data()); }); } catch(e) { return null; }
+      };
+      window.firebaseReady = true;
+    } catch(e) { console.warn('Firebase init failed:', e); window.firebaseReady = false; }
+  </script>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div style="font-size:13px;color:#2E5FA3;font-weight:600">Loading tracker…</div>
+</div>
+
+<header>
+  <div>
+    <h1 id="h-title">IZI Safety  -  User Profile Harmonization</h1>
+    <span id="h-sub">Planning Tracker | Schedule: 28/04/2026 - 31/01/2027</span>
+  </div>
+  <div class="header-right">
+    <div class="lock-indicator" id="lock-indicator">
+      <span class="lock-icon">🔒</span>
+      <span id="lock-label">View only</span>
+      <span class="lock-tip" id="lock-tip">Press Ctrl+Shift+A to unlock editing</span>
+    </div>
+    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">45 subsidiaries · 8 zones · 9 months</div>
+    <div class="lang-toggle">
+      <button class="lang-btn" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('summary')" id="tab-btn-summary">Overview</div>
+  <div class="tab" onclick="switchTab('detail')" id="tab-btn-detail">Subsidiary Detail</div>
+  <div class="tab" onclick="switchTab('comms')" id="tab-btn-comms">Communications</div>
+  <div class="tab" onclick="switchTab('workflow')" id="tab-btn-workflow">Workflow</div>
+  <div class="tab" onclick="switchTab('notes')" id="tab-btn-notes">Friction Points</div>
+</div>
+
+<div class="container">
+
+  <div class="tab-panel active" id="tab-summary">
+    <div class="cards">
+      <div class="card"><div class="label" id="card-total-lbl">Total Subsidiaries</div><div class="value">45</div></div>
+      <div class="card green"><div class="label" id="card-done-lbl">Completed</div><div class="value" id="cnt-done">0</div></div>
+      <div class="card orange"><div class="label" id="card-prog-lbl">In Progress</div><div class="value" id="cnt-progress">0</div></div>
+      <div class="card"><div class="label" id="card-pend-lbl">Not Started</div><div class="value" id="cnt-pending">45</div></div>
+    </div>
+    <div class="gantt-wrap">
+      <div class="header" style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px">
+        <span style="font-size:14px;font-weight:700;color:#1F3864" id="gantt-title">General Schedule - Gantt View by Zone</span>
+        <span style="font-size:12px;color:#888">28/04/2026  -  31/01/2027</span>
+      </div>
+      <div class="chart" id="gantt-chart">
+        <div class="month-row" id="gantt-month-row"></div>
+        <div id="gantt-body"></div>
+        <div class="footer" style="display:flex;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:0.5px solid #ebebeb">
+          <span style="font-size:11px;color:#bbb" id="gantt-footer-left">April 2026</span>
+          <span style="font-size:11px;color:#bbb" id="gantt-footer-right">January 2027</span>
+        </div>
+      </div>
+    </div>
+    <div id="gantt-click-hint" style="font-size:11px;color:#bbb;text-align:center;margin-top:2px;padding-bottom:2px">
+      👆 Click a zone in the real Gantt below to filter the Subsidiary Detail tab
+    </div>
+
+    <!-- REAL GANTT -->
+    <div class="gantt-wrap" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+        <span style="font-size:14px;font-weight:700;color:#1F3864" id="real-gantt-title">Actual Progress — Active Subsidiaries</span>
+        <span style="font-size:11px;color:#bbb" id="real-gantt-subtitle">Only subsidiaries with at least one step completed</span>
+      </div>
+      <div id="real-gantt-body" style="overflow-x:auto"></div>
+    </div>
+    <div id="gantt-tooltip" style="position:fixed;background:#fff;border:0.5px solid #ccc;border-radius:8px;padding:10px 14px;font-size:12px;color:#1a1a1a;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:9999;min-width:180px;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
+      <div style="font-weight:500;margin-bottom:4px;font-size:13px" id="tt-name"></div>
+      <div style="color:#888;margin-bottom:6px" id="tt-detail"></div>
+      <div style="color:#444;font-size:12px;line-height:1.5;border-top:0.5px solid #ebebeb;padding-top:6px" id="tt-desc"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-detail">
+    <div class="detail-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 id="detail-title" style="margin-bottom:0">Detailed Tracking by Subsidiary</h2>
+        <button id="migrate-dates-btn" onclick="migrateLegacyDates()" style="display:none;background:#1F3864;color:white;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;">
+          📅 Assign today's date to all checked steps
+        </button>
+      </div>
+      <div class="steps-legend">
+        <div class="steps-legend-title" id="legend-title">Tracked Steps</div>
+        <div class="steps-grid" id="steps-legend-grid"></div>
+      </div>
+      <div class="filters">
+        <select id="filter-region" onchange="renderDetail(); updateClearBtn()"></select>
+        <input type="text" id="filter-search" oninput="renderDetail(); updateClearBtn()">
+        <select id="filter-status" onchange="renderDetail(); updateClearBtn()"></select>
+        <button class="clear-filters-btn" id="clear-filters-btn" onclick="clearFilters()">
+          <span>✕</span><span id="clear-filters-label">Clear filters</span>
+        </button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="detail-table">
+          <thead><tr id="detail-head"></tr></thead>
+          <tbody id="detail-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-comms">
+    <div class="comms-wrap">
+      <h2 id="comms-title">Communication Templates</h2>
+      <p class="comms-sub" id="comms-sub">Ready-to-use templates for Step 4 (contractor communication) and Step 6 (project closure). Click "Copy" to copy any template to your clipboard.</p>
+      <div class="comms-section-title" id="comms-init-title">✉️ Project Initiation Email  -  Subsidiary Administrator (Step 1)</div>
+      <div class="comms-cards" id="comms-init-cards"></div>
+      <div class="comms-section-title" id="comms-inapp-title">📱 In-App Notification  -  Individual Worker (Step 4 & 6)</div>
+      <div class="comms-cards" id="comms-inapp-cards"></div>
+      <div class="comms-section-title" id="comms-email-title">📧 Company Email  -  Contractor Company Contact (Customer.io)</div>
+      <div class="comms-cards" id="comms-email-cards"></div>
+      <div class="comms-section-title" id="comms-closure-title">✅ Project Closure Email  -  Subsidiary Administrator (Step 6)</div>
+      <div class="comms-cards" id="comms-closure-cards"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-workflow">
+    <div class="comms-wrap">
+      <h2 id="workflow-title">Project Workflow</h2>
+      <p class="comms-sub" id="workflow-sub">End-to-end view of the harmonisation project  -  from initiation to post-deployment.</p>
+      <div class="comms-section-title">Global project workflow  -  7 steps</div>
+      <div style="overflow-x:auto;margin-bottom:28px">
+        <svg width="100%" viewBox="0 0 680 820" style="max-width:520px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+          <rect x="40" y="20" width="14" height="14" rx="3" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text font-size="12" fill="#555" font-family="Arial,sans-serif" x="60" y="31">TotalEnergies HQ</text>
+          <rect x="200" y="20" width="14" height="14" rx="3" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/><text font-size="12" fill="#555" font-family="Arial,sans-serif" x="220" y="31">IZI Safety</text>
+          <rect x="310" y="20" width="14" height="14" rx="3" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/><text font-size="12" fill="#555" font-family="Arial,sans-serif" x="330" y="31">Subsidiary admin</text>
+          <rect x="460" y="20" width="14" height="14" rx="3" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/><text font-size="12" fill="#555" font-family="Arial,sans-serif" x="480" y="31">Contractor company</text>
+          <rect x="200" y="60" width="280" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#0C447C" font-family="Arial,sans-serif" x="340" y="83" text-anchor="middle">Step 1  -  Gap analysis</text>
+          <text font-size="12" fill="#185FA5" font-family="Arial,sans-serif" x="340" y="101" text-anchor="middle">Gap analysis shared with subsidiary</text>
+          <line x1="340" y1="116" x2="340" y2="150" stroke="#185FA5" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="150" width="280" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="340" y="173" text-anchor="middle">Step 2  -  Review meeting</text>
+          <text font-size="12" fill="#0F6E56" font-family="Arial,sans-serif" x="340" y="191" text-anchor="middle">IZI Safety + subsidiary administrators</text>
+          <line x1="340" y1="206" x2="340" y2="240" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="240" width="280" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#3C3489" font-family="Arial,sans-serif" x="340" y="263" text-anchor="middle">Step 3  -  Contractor communication</text>
+          <text font-size="12" fill="#534AB7" font-family="Arial,sans-serif" x="340" y="281" text-anchor="middle">IZI Safety: closure to admins + contractors</text>
+          <line x1="340" y1="296" x2="340" y2="330" stroke="#534AB7" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="330" width="280" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#633806" font-family="Arial,sans-serif" x="340" y="353" text-anchor="middle">Step 4  -  Profile update</text>
+          <text font-size="12" fill="#854F0B" font-family="Arial,sans-serif" x="340" y="371" text-anchor="middle">IZI Safety: closure to admins + contractors</text>
+          <line x1="340" y1="386" x2="340" y2="420" stroke="#854F0B" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="420" width="280" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="340" y="443" text-anchor="middle">Step 5  -  Closure communication</text>
+          <text font-size="12" fill="#0F6E56" font-family="Arial,sans-serif" x="340" y="461" text-anchor="middle">IZI Safety: closure to admins + contractors</text>
+          <line x1="270" y1="476" x2="150" y2="520" stroke="#888" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="410" y1="476" x2="530" y2="520" stroke="#888" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="50" y="520" width="200" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#3C3489" font-family="Arial,sans-serif" x="150" y="543" text-anchor="middle">In-app notification</text>
+          <text font-size="12" fill="#534AB7" font-family="Arial,sans-serif" x="150" y="561" text-anchor="middle">Individual worker notified</text>
+          <rect x="430" y="520" width="200" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#633806" font-family="Arial,sans-serif" x="530" y="543" text-anchor="middle">Customer.io email</text>
+          <text font-size="12" fill="#854F0B" font-family="Arial,sans-serif" x="530" y="561" text-anchor="middle">Contractor company notified</text>
+          <line x1="150" y1="576" x2="270" y2="630" stroke="#888" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="530" y1="576" x2="410" y2="630" stroke="#888" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="630" width="280" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="340" y="653" text-anchor="middle">Step 6  -  Closure communication</text>
+          <text font-size="12" fill="#0F6E56" font-family="Arial,sans-serif" x="340" y="671" text-anchor="middle">IZI Safety: closure to admins + contractors</text>
+          <line x1="340" y1="686" x2="340" y2="720" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <rect x="200" y="720" width="280" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="340" y="743" text-anchor="middle">Step 7  -  Post-deployment</text>
+          <text font-size="12" fill="#0F6E56" font-family="Arial,sans-serif" x="340" y="761" text-anchor="middle">IZI Safety: support + impact analysis</text>
+        </svg>
+      </div>
+      <div class="comms-section-title">Customer.io automation flow  -  detail</div>
+      <div style="overflow-x:auto">
+        <svg width="100%" viewBox="0 0 680 640" style="max-width:520px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+          <rect x="200" y="30" width="280" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="340" y="53" text-anchor="middle">Trigger: profile_updated</text>
+          <text font-size="12" fill="#0F6E56" font-family="Arial,sans-serif" x="340" y="71" text-anchor="middle">fired by IZI Safety after Step 5</text>
+          <line x1="340" y1="86" x2="340" y2="120" stroke="#888" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="240" y="120" width="200" height="44" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#2C2C2A" font-family="Arial,sans-serif" x="340" y="147" text-anchor="middle">Wait 1 hour</text>
+          <line x1="340" y1="164" x2="340" y2="198" stroke="#888" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="190" y="198" width="300" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#0C447C" font-family="Arial,sans-serif" x="340" y="221" text-anchor="middle">Send email to company contact</text>
+          <text font-size="12" fill="#185FA5" font-family="Arial,sans-serif" x="340" y="239" text-anchor="middle">FR or EN based on language attribute</text>
+          <line x1="340" y1="254" x2="340" y2="288" stroke="#888" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="240" y="288" width="200" height="44" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#2C2C2A" font-family="Arial,sans-serif" x="340" y="315" text-anchor="middle">Wait 5 days</text>
+          <line x1="340" y1="332" x2="340" y2="366" stroke="#888" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="220" y="366" width="240" height="44" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#633806" font-family="Arial,sans-serif" x="340" y="393" text-anchor="middle">Email opened?</text>
+          <line x1="220" y1="388" x2="110" y2="388" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <text font-size="12" fill="#555" font-family="Arial,sans-serif" x="163" y="382" text-anchor="middle">Yes</text>
+          <rect x="30" y="432" width="160" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#085041" font-family="Arial,sans-serif" x="110" y="459" text-anchor="middle">Flow ends</text>
+          <line x1="110" y1="388" x2="110" y2="432" stroke="#0F6E56" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <line x1="460" y1="388" x2="560" y2="388" stroke="#993C1D" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <text font-size="12" fill="#555" font-family="Arial,sans-serif" x="508" y="382" text-anchor="middle">No</text>
+          <rect x="470" y="432" width="180" height="44" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#712B13" font-family="Arial,sans-serif" x="560" y="459" text-anchor="middle">Send reminder</text>
+          <line x1="560" y1="476" x2="560" y2="510" stroke="#993C1D" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="470" y="510" width="180" height="44" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#2C2C2A" font-family="Arial,sans-serif" x="560" y="537" text-anchor="middle">Wait 3 days</text>
+          <line x1="560" y1="554" x2="560" y2="588" stroke="#993C1D" stroke-width="1.5" marker-end="url(#arrow2)"/>
+          <rect x="460" y="588" width="200" height="44" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+          <text font-size="14" font-weight="500" fill="#501313" font-family="Arial,sans-serif" x="560" y="615" text-anchor="middle">Alert IZI Safety support</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── FRICTION POINTS TAB ── -->
+  <div class="tab-panel" id="tab-notes">
+    <div class="comms-wrap">
+      <h2 id="notes-title">Friction Points</h2>
+      <p class="comms-sub" id="notes-sub">Project friction log  -  updated as the deployment progresses.</p>
+
+      <!-- SECTION  -  FRICTION POINTS -->
+      <div class="notes-section">
+        <div class="notes-section-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+          <h3 id="friction-title">Friction Points</h3>
+          <span class="section-toggle">▼</span>
+        </div>
+        <div class="notes-section-body">
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority resolved">Resolved</span>
+              <span class="note-title">No Bulk Editing Capability</span>
+              <span class="note-date">Resolved 22 April</span>
+            </div>
+            <div class="note-body">This was one of the most time-consuming operational bottlenecks. Previously, updating a profile's resources required navigating to each individual resource (e-learnings and documents), modifying its attribution settings, and manually linking it to the relevant profile. With up to 17 profiles per subsidiary and dozens of resources per profile, this process was highly repetitive and significantly extended the execution time of step 5.
+
+This has now been resolved and deployed. The platform now allows administrators to open a profile directly and bulk assign or remove all associated resources in a single action.</div>
+          </div>
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority medium">Medium</span>
+              <span class="note-title">Holiday Overlap - April and May</span>
+            </div>
+            <div class="note-body">The April and May wave ran into a busy period on both sides: leave, national holidays, and a team seminar all at the same time. For future waves, we will check calendars upfront.</div>
+          </div>
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority high">High</span>
+              <span class="note-title">Subsidiary Admin Availability</span>
+            </div>
+            <div class="note-body">The validation meeting (step 3) is a mandatory checkpoint  -  it cannot be bypassed. It requires the simultaneous availability of both IZI Safety and the local TE administrator, who manages this project alongside their day-to-day operational responsibilities.
+
+• Cameroun: administrator on leave until June 22nd  -  meeting already pre-scheduled for the 23rd.
+• Antilles Guyane: time zone difference combined with limited morning availability  -  scheduling windows are narrow.
+• Ghana &amp; Guinée Équatoriale: step 3 confirmation in progress.</div>
+          </div>
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority medium">Medium</span>
+              <span class="note-title">Profile-Level Decisions Requiring Trilateral Validation</span>
+            </div>
+            <div class="note-body">During the Ivory Coast deployment, the "temporary worker" profile - the most widely used in the entity - was not included in the harmonised matrix. Applying the harmonisation to it would have directly impacted the compliance status of a large number of active workers, risking disruption to ongoing site operations.
+
+After confirmation between the subsidiary admin, IZI Safety and HQ, the decision was made to keep this profile unchanged. This case highlighted that some profiles require case-by-case assessment and trilateral sign-off, which adds time that is difficult to anticipate upfront.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 5  -  NEXT STEPS -->
+      <div class="notes-section">
+        <div class="notes-section-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+          <h3 id="nextsteps-title">Notes</h3>
+          <span class="section-toggle">▼</span>
+        </div>
+        <div class="notes-section-body">
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority high">High</span>
+              <span class="note-title">Remind subsidiary directors: 5-day response window for validation</span>
+            </div>
+            <div class="note-body">Directors to be reminded that their admin's availability is critical. A 5-business-day response window is the target.</div>
+          </div>
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority high">High</span>
+              <span class="note-title">Set deployment deadline: no reply means we proceed</span>
+            </div>
+            <div class="note-body">A clear deadline will be set for each subsidiary admin to validate. If no response is received, IZI Safety is authorised to proceed without formal sign-off.</div>
+          </div>
+          <div class="note-item">
+            <div class="note-item-header">
+              <span class="note-priority medium">Medium</span>
+              <span class="note-title">Share updated timeline for AFR/MOI and next waves</span>
+              <span class="note-date">End of June</span>
+            </div>
+            <div class="note-body">Send an updated timeline to the team, with buffer time built in for AFR/MOI and the waves that follow.</div>
+          </div>
+
+
+        </div>
+      </div>
+
+      <!-- Dynamic notes saved to Firebase -->
+      <div id="notes-body"></div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="save-indicator" id="save-indicator">✓ Saved</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="lock-big">🔐</div>
+    <h3 id="modal-title">Admin Access</h3>
+    <p id="modal-desc">Enter your PIN to unlock editing.</p>
+    <input type="password" class="pin-input" id="pin-input" maxlength="30" onkeydown="if(event.key==='Enter')submitPin()">
+    <div class="pin-error" id="pin-error"></div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal()" id="modal-cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPin()" id="modal-confirm">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const REGIONS = [
+  { name:"AFR/AFO",  count:8, start:0, end:2, color:"#939DA8", subs:["Ghana","Togo","Guinée Conakry","Cameroun","Sénégal","Côte d'Ivoire","Gabon","Guinée Equatoriale"] },
+  { name:"AFR/MOI",  count:8, start:2, end:3, color:"#939DA8", subs:["Tunisie","Maurice","Maroc","Algérie","Egypte","Ethiopie","Madagascar","Mozambique"] },
+  { name:"AFR/NG",   count:1, start:3, end:4, color:"#939DA8", subs:["Nigéria"] },
+  { name:"AFR/ACE",  count:8, start:4, end:5, color:"#939DA8", subs:["Malawi","Zambie","RDC","Congo","Ouganda","Kenya","Tanzanie","Zimbabwe"] },
+  { name:"AFR/ASNE", count:2, start:5, end:6, color:"#939DA8", subs:["Afrique du Sud","Namibie"] },
+  { name:"APMO",     count:5, start:6, end:7, color:"#939DA8", subs:["Cambodge","Fidji","Inde","Jordanie","Liban"] },
+  { name:"EOMC",     count:7, start:6, end:8, color:"#939DA8", subs:["Antilles Guyane","Rép. Dominicaine","Polynésie","Jamaïque","Mayotte","Porto Rico","Réunion"] },
+  { name:"LUB",      count:5, start:8, end:9, color:"#939DA8", subs:["Argentine","Brésil","Chili","Mexique","USA"] },
+];
+
+const GAP_ANALYSIS_URLS = {
+  "AFR/AFO|Ghana":              "https://izisafety.github.io/Gap-Analysis-Ghana/",
+  "AFR/AFO|Togo":               "https://izisafety.github.io/Gap-Analysis-Togo/",
+  "AFR/AFO|Guinée Conakry":     "https://izisafety.github.io/Gap-Analysis-Guinea-Conakry/",
+  "AFR/AFO|Cameroun":           "https://izisafety.github.io/Gap-Analysis-Cameroon/",
+  "AFR/AFO|Sénégal":            "https://izisafety.github.io/Gap-Analysis-Senegal/",
+  "AFR/AFO|Côte d'Ivoire":      "https://izisafety.github.io/Gap-Analysis-IvoryCoast/",
+  "AFR/AFO|Gabon":              "https://izisafety.github.io/Gap-Analysis-Gabon/",
+  "AFR/AFO|Guinée Equatoriale": "https://izisafety.github.io/Gap-Analysis-Equatorial-Guinea/",
+  "EOMC|Réunion":               "https://izisafety.github.io/Gap-Analysis-Reunion/",
+  "EOMC|Antilles Guyane":       "https://izisafety.github.io/Gap-Analysis-Antilles-Guyane/",
+};
+
+const STEPS = [
+  { num:1, key:'s1', labelEN:'Step 1', labelFR:'Étape 1', descEN:'Gap analysis shared with subsidiary', descFR:'Analyse des écarts partagée avec la filiale' },
+  { num:2, key:'s2', labelEN:'Step 2', labelFR:'Étape 2', descEN:'Review meeting with subsidiary administrators', descFR:'Réunion de revue avec les administrateurs' },
+  { num:3, key:'s3', labelEN:'Step 3', labelFR:'Étape 3', descEN:'Communication to contractors (IZI Safety support informed)', descFR:'Communication aux contractants (support IZI informé)' },
+  { num:4, key:'s4', labelEN:'Step 4', labelFR:'Étape 4', descEN:'Effective update of user profiles on the platform', descFR:'Mise à jour effective des profils sur la plateforme' },
+  { num:5, key:'s5', labelEN:'Step 5', labelFR:'Étape 5', descEN:'Closure communication to admins and contractors', descFR:'Communication de clôture auprès des admins et contractants' },
+];
+
+// s6 is hidden — post-deployment is informational only, not tracked
+const STEPS_HIDDEN = ['s6'];
+
+const MONTH_BREAKS = [0, 0.0108, 0.1219, 0.2294, 0.3405, 0.4516, 0.5591, 0.6703, 0.7778, 0.8889, 1.0];
+const PHASES = [
+  { name:'AFR/AFO (8)',  start:0.0000, dur:0.1613, weeks:5, color:'#939DA8', region:'AFR/AFO',  desc:"Ghana, Togo, Guinée Conakry, Cameroun, Sénégal, Côte d'ivoire, Gabon, Guinée Equatoriale" },
+  { name:'AFR/MOI (8)',  start:0.1541, dur:0.1613, weeks:5, color:'#939DA8', region:'AFR/MOI',  desc:'Tunisie, Maurice, Maroc, Algérie, Egypte, Ethiopie, Madagascar, Mozambique' },
+  { name:'AFR/NG (1)',   start:0.2975, dur:0.0681, weeks:3, color:'#939DA8', region:'AFR/NG',   desc:'Nigéria' },
+  { name:'AFR/ACE (8)',  start:0.3441, dur:0.1613, weeks:5, color:'#939DA8', region:'AFR/ACE',  desc:'Malawi, Zambie, RDC, Congo, Ouganda, Kenya, Tanzanie, Zimbabwe' },
+  { name:'AFR/ASNE (2)', start:0.5054, dur:0.0968, weeks:4, color:'#939DA8', region:'AFR/ASNE', desc:'Afrique du sud, Namibie' },
+  { name:'APMO (5)',     start:0.6093, dur:0.1039, weeks:4, color:'#939DA8', region:'APMO',     desc:'Cambodge, Fidji, Inde, Jordanie, Liban' },
+  { name:'EOMC (7)',     start:0.7025, dur:0.1470, weeks:5, color:'#939DA8', region:'EOMC',     desc:'Antilles Guyane, Rep Dominicaine, Polynésie, Jamaïque, Mayotte, Porto Rico, Réunion' },
+  { name:'LUB (5)',      start:0.8315, dur:0.1254, weeks:5, color:'#939DA8', region:'LUB',      desc:'Argentine, Brésil, Chili, Mexique, États-Unis' },
+];
+const TOTAL_MONTHS = 1;
+
+const CORRECT_PIN = 'Izisafety26$';
+var isUnlocked = false;
+const state = {};
+REGIONS.forEach(function(r) { r.subs.forEach(function(s) {
+  state[r.name + '|' + s] = {};
+  STEPS.forEach(function(st) { state[r.name + '|' + s][st.key] = false; });
+}); });
+
+const subOrder = {};
+REGIONS.forEach(function(r) { subOrder[r.name] = r.subs.slice(); });
+
+// Subsidiaries that are part of a pilot wave
+var PILOT_SUBS = {
+  "AFR/AFO|Côte d'Ivoire": true,
+  "AFR/AFO|Ghana": true,
+  "AFR/AFO|Cameroun": true,
+  "AFR/AFO|Guinée Equatoriale": true,
+  "EOMC|Réunion": true,
+  "EOMC|Antilles Guyane": true
+};
+
+// Comments store  -  key: "REGION|Sub", value: string
+var comments = {};
+
+// Notes store: array of sections, each with items
+var notesData = {
+  sections: [
+    {
+      id: 'dynamic_notes',
+      titleEN: 'Additional Notes', titleFR: 'Notes supplémentaires',
+      collapsed: false, items: []
+    }
+  ]
+};
+
+var lang = 'en';
+
+const TEMPLATES = {
+  initiation: {
+    fr: "Bonjour, \n    \nDans le cadre du déploiement du projet d'harmonisation des profils utilisateurs au sein de votre filiale, une matrice harmonisée a été élaborée par le siège en collaboration avec IZI Safety.\n\nCe projet vise à établir un socle commun minimal d'exigences pour chaque profil utilisateur dans l'ensemble des filiales de la branche MS et à uniformiser les intitulés des profils.\n\nVoici les principales étapes qui vous concernent :\n\n1. Analyse des écarts entre la matrice harmonisée (HQ) et votre matrice opérationnelle, avec identification des impacts sur la conformité de vos utilisateurs. Cette analyse vous sera transmise par IZI Safety.\n2. Réunion de revue avec vos administrateurs pour confirmer les modifications à apporter.\n3. Communication auprès de vos contractants concernant les changements à venir.\n4. Mise à jour effective des profils sur la plateforme, suivie d'une communication de clôture et d'un bilan post-déploiement.\n\nL'ensemble de ces étapes est piloté par IZI Safety. Votre rôle principal sera de participer à la réunion de revue (étape 2) et de valider les modifications proposées.\n\nL'équipe IZI Safety, coordonnée par Ludovic et Ghita, reviendra vers vous prochainement pour planifier la réunion de revue. En attendant, nous restons disponibles pour toute question.\n\nCordialement,",
+    en: "Hello, \n    \nAs part of the deployment of the user profile harmonisation project within your subsidiary, a harmonised matrix has been developed by TotalEnergies Headquarters in collaboration with IZI Safety.\n\nThis project aims to establish a common minimum set of requirements for each user profile across all MS branch subsidiaries, and to standardise profile titles throughout all entities.\n\nHere are the key steps that will involve your subsidiary:\n\n1. Gap analysis between the harmonised matrix (HQ) and your current operational matrix, identifying the impact on your users' compliance. This analysis will be shared with you by IZI Safety.\n2. Review meeting with your administrators to confirm the proposed changes.\n3. Communication to your contractors regarding the upcoming changes.\n4. Effective update of user profiles on the platform, followed by a project closure communication and post-deployment review.\n\nAll steps are managed by IZI Safety. Your main role will be to participate in the review meeting (step 2) and validate the proposed changes.\n\nThe IZI Safety team, coordinated by Ludovic and Ghita, will be in touch shortly to schedule the review meeting. In the meantime, please don't hesitate to reach out with any questions.\n\nBest regards,"
+  },
+  inapp: {
+    fr: "Bonjour {{first_name}},\n\nVotre profil IZI Safety a été mis à jour dans le cadre du projet d'harmonisation des profils utilisateurs de TotalEnergies {{entity}}.\n\nVoici ce qui change pour vous :\n\n📘 Nouveaux e-learnings à compléter :\n• {{new_elearnings}}\n\n✅ Ressources retirées de votre profil :\n• {{removed_resources}}\n\nMerci de compléter les nouveaux modules dès que possible afin de maintenir votre conformité.\n\nUne question ? Contactez le support IZI Safety : support@izisafety.com\n\nL'équipe IZI Safety",
+    en: "Hello {{first_name}},\n\nYour IZI Safety profile has been updated as part of TotalEnergies {{entity}}'s user profile harmonisation project.\n\nHere is what has changed for you:\n\n📘 New e-learnings to complete:\n• {{new_elearnings}}\n\n✅ Resources removed from your profile:\n• {{removed_resources}}\n\nPlease complete the new modules as soon as possible to maintain your compliance status.\n\nAny questions? Contact IZI Safety support: support@izisafety.com\n\nThe IZI Safety Team"
+  },
+  closure: {
+    fr: "Bonjour a vous,\n\nJ'espere que vous allez bien.\n\nJe reviens vers vous pour vous informer que l'harmonisation des profils utilisateurs sur le perimetre de votre filiale est finalisee. Pour plus d'informations sur l'analyse d'impact, veuillez visiter cette page : {{gap_analysis_url}}\n\nLes referents des entreprises contractantes concernees ont ete informes par email des modifications apportees a leurs profils, et invites a veiller a ce que leurs employes prennent connaissance des nouvelles ressources requises afin de maintenir leur conformite.\n\nJe reste bien entendu disponible pour tout point complementaire, et nous suivrons ensemble la progression de la mise en conformite dans les prochaines semaines.\n\nUn grand merci pour votre disponibilite et votre engagement tout au long de ce deploiement, votre reactivite a beaucoup facilite le travail.\n\nBien cordialement,",
+    en: "Dear all,\n\nI hope this message finds you well.\n\nI am writing to inform you that the user profile harmonisation for your subsidiary is now complete. For more information on the impact analysis, please visit this page: {{gap_analysis_url}}\n\nThe contacts of the relevant contractor companies have been notified by email of the changes made to their profiles, and invited to ensure that their employees review the newly required resources in order to maintain their compliance.\n\nI remain of course available for any further discussion, and we will monitor the compliance progress together over the coming weeks.\n\nA big thank you for your availability and commitment throughout this deployment  -  your responsiveness made the work much easier.\n\nBest regards,"
+  },
+  email: {
+    fr: "Objet : Mise à jour des profils utilisateurs dans IZI Safety {{entity}}\n\nBonjour,\n\nDans le cadre du projet d'harmonisation des profils \"Utilisateurs\" piloté par TotalEnergies {{entity}}, nous vous informons que certains d'entre eux ont été mis à jour sur la plateforme.\n\nCes modifications s'inscrivent dans un effort de standardisation des exigences de sécurité à l'échelle de toutes les filiales TotalEnergies. Votre personnel est invité à compléter les nouveaux modules et/ou transmettre les documents requis.\n\nNous vous recommandons de vous assurer qu'ils prennent connaissance de ces mises à jour dans les meilleurs délais afin de maintenir leur conformité.\n\nPour toute question : support@izi.net\n\nCordialement,\nL'équipe IZI Safety",
+    en: "Subject: User profile harmonization in IZI Safety - {{entity}}\n\nHello,\n\nAs part of the \"User\" profile harmonization project led by TotalEnergies {{entity}}, we inform you that some of them have been updated on the platform.\n\nThese changes are part of an effort to standardize security requirements across all TotalEnergies subsidiaries. Your staff are invited to complete the new modules and/or submit the required documents.\n\nWe recommend that you ensure they are aware of these updates as soon as possible to maintain their compliance.\n\nAny questions? Contact support at: support@izi.net\n\nBest regards,\nThe IZI Safety Team"
+  }
+};
+
+function renderComms() {
+  var sections = [
+    { el: document.getElementById('comms-init-cards'),    type: 'initiation', channel: lang === 'fr' ? 'Email - Étape 1' : 'Email - Step 1' },
+    { el: document.getElementById('comms-inapp-cards'),   type: 'inapp',      channel: lang === 'fr' ? 'Notification in-app' : 'In-app notification' },
+    { el: document.getElementById('comms-email-cards'),   type: 'email',      channel: lang === 'fr' ? 'Email Customer.io' : 'Customer.io email' },
+    { el: document.getElementById('comms-closure-cards'), type: 'closure',    channel: lang === 'fr' ? 'Email - Étape 6' : 'Email - Step 6' },
+  ];
+  sections.forEach(function(s) {
+    var el = s.el, type = s.type, channel = s.channel;
+    el.innerHTML = ['fr', 'en'].map(function(l) {
+      return '<div class="comms-card">'
+        + '<div class="comms-card-header"><span class="lang-badge ' + l + '">' + l.toUpperCase() + '</span><span class="channel-badge">' + channel + '</span></div>'
+        + '<div class="comms-card-body" id="tpl-' + type + '-' + l + '">' + TEMPLATES[type][l] + '</div>'
+        + '<div class="comms-card-footer"><button class="copy-btn" id="copy-' + type + '-' + l + '" onclick="copyTemplate(\'' + type + '\',\'' + l + '\')">' + (lang === 'fr' ? 'Copier' : 'Copy') + '</button></div>'
+        + '</div>';
+    }).join('');
+  });
+  document.getElementById('comms-inapp-title').textContent = lang === 'fr' ? '📱 Notification In-App  -  Collaborateur individuel (Étapes 4 & 6)' : '📱 In-App Notification  -  Individual Worker (Steps 4 & 6)';
+  document.getElementById('comms-email-title').textContent = lang === 'fr' ? '📧 Email Entreprise  -  Contact société contractante (Customer.io)' : '📧 Company Email  -  Contractor Company Contact (Customer.io)';
+  document.getElementById('comms-closure-title').textContent = lang === 'fr' ? '✅ Email de Clôture  -  Administrateur de filiale (Étape 6)' : '✅ Project Closure Email  -  Subsidiary Administrator (Step 6)';
+  document.getElementById('comms-title').textContent = lang === 'fr' ? 'Modèles de Communication' : 'Communication Templates';
+  document.getElementById('comms-sub').textContent = lang === 'fr' ? "Modèles prêts à l'emploi pour les étapes 4 et 6. Cliquez sur \"Copier\" pour copier dans le presse-papier." : 'Ready-to-use templates for Step 4 and Step 6. Click "Copy" to copy any template to your clipboard.';
+}
+
+function copyTemplate(type, l) {
+  navigator.clipboard.writeText(TEMPLATES[type][l]).then(function() {
+    var btn = document.getElementById('copy-' + type + '-' + l);
+    btn.textContent = lang === 'fr' ? '✓ Copié !' : '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = lang === 'fr' ? 'Copier' : 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+const T = {
+  en: {
+    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'45 subsidiaries · 8 zones · 9 months',
+    tabOverview:'Overview', tabDetail:'Subsidiary Detail', tabComms:'Communications', tabWorkflow:'Workflow', tabNotes:'Friction Points',
+    cardTotal:'Total Subsidiaries', cardDone:'Completed', cardProg:'In Progress', cardPend:'Not Started',
+    ganttTitle:'General Schedule - Gantt View by Zone',
+    months:['Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.','Jan.'],
+    monthsFull:['April','May','June','July','August','September','October','November','December','January 2027'],
+    detailTitle:'Detailed Tracking by Subsidiary', legendTitle:'Tracked Steps',
+    filterAllZones:'All zones', filterSearch:'Search subsidiary…', filterAllStatus:'All statuses',
+    filterNotStarted:'Not started', filterInProgress:'In progress', filterCompleted:'Completed',
+    thZone:'Zone', thSub:'Subsidiary', thPeriod:'Period', thProgress:'Progress', thStatus:'Status', thNotes:'Notes',
+    badgeNotStarted:'Not started', badgeInProgress:'In progress', badgeCompleted:'Completed',
+    lockLabel:'View only', unlockLabel:'Editing unlocked',
+    modalTitle:'Admin Access', modalDesc:'Enter your PIN to unlock editing.',
+    modalCancel:'Cancel', modalConfirm:'Unlock', pinWrong:'Incorrect PIN. Try again.',
+    saving:'Saving…', saved:'✓ Saved', savedLocal:'✓ Saved locally', lockedTip:'Unlock editing to interact',
+    clearFilters:'Clear filters', addNote:'+ Note', saveNote:'Save', noNote:'No note',
+    notePlaceholder:'Add a note about this subsidiary…'
+  },
+  fr: {
+    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'45 filiales · 8 zones · 9 mois',
+    tabOverview:'Vue Générale', tabDetail:'Détail par Filiale', tabComms:'Communications', tabWorkflow:'Flux', tabNotes:'Friction Points',
+    cardTotal:'Total Filiales', cardDone:'Complétées', cardProg:'En cours', cardPend:'Non démarrées',
+    ganttTitle:'Planning Général - Vue Gantt par Zone',
+    months:['Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.','Jan.'],
+    monthsFull:['Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre','Janvier 2027'],
+    detailTitle:'Suivi Détaillé par Filiale', legendTitle:'Étapes suivies',
+    filterAllZones:'Toutes les zones', filterSearch:'Rechercher une filiale…', filterAllStatus:'Tous les statuts',
+    filterNotStarted:'Non démarré', filterInProgress:'En cours', filterCompleted:'Complété',
+    thZone:'Zone', thSub:'Filiale', thPeriod:'Période', thProgress:'Progression', thStatus:'Statut', thNotes:'Notes',
+    badgeNotStarted:'Non démarré', badgeInProgress:'En cours', badgeCompleted:'Complété',
+    lockLabel:'Lecture seule', unlockLabel:'Édition déverrouillée',
+    modalTitle:'Accès administrateur', modalDesc:"Entrez votre PIN pour déverrouiller l'édition.",
+    modalCancel:'Annuler', modalConfirm:'Déverrouiller', pinWrong:'PIN incorrect. Réessayez.',
+    saving:'Enregistrement…', saved:'✓ Enregistré', savedLocal:'✓ Enregistré localement',
+    lockedTip:'Déverrouiller pour interagir', clearFilters:'Effacer les filtres',
+    addNote:'+ Note', saveNote:'Enregistrer', noNote:'Aucune note',
+    notePlaceholder:'Ajouter une note sur cette filiale…'
+  }
+};
+function t(k) { return T[lang][k] || k; }
+
+const STORAGE_KEY = 'izi_tracker_state_v1';
+var saveTimer = null;
+
+function waitForFirebase(timeout) {
+  timeout = timeout || 5000;
+  return new Promise(function(resolve) {
+    if (window.firebaseReady) { resolve(true); return; }
+    var start = Date.now();
+    var check = setInterval(function() {
+      if (window.firebaseReady) { clearInterval(check); resolve(true); }
+      else if (Date.now() - start > timeout) { clearInterval(check); resolve(false); }
+    }, 50);
+  });
+}
+
+async function loadFromStorage() {
+  var ready = await waitForFirebase();
+  if (ready && window.firebaseLoad) { var data = await window.firebaseLoad(); if (data) { applyStateFromObj(data); return; } }
+  try { var raw = localStorage.getItem(STORAGE_KEY); if (raw) applyStateFromObj(JSON.parse(raw)); } catch(e) {}
+}
+
+function applyNotesFromObj(saved) {
+  try {
+    if(saved['__comments__']) Object.assign(comments, saved['__comments__']);
+    if(saved['__notes__'] && saved['__notes__'].sections) {
+      saved['__notes__'].sections.forEach(function(savedSec) {
+        var sec = notesData.sections.find(function(s) { return s.id === savedSec.id; });
+        if(sec) { sec.items = savedSec.items || []; sec.collapsed = savedSec.collapsed || false; }
+      });
+    }
+  } catch(e) {}
+}
+
+function applyStateFromObj(saved) {
+  try {
+    Object.keys(saved).forEach(function(k) {
+      if (k === '__comments__' || k === '__notes__') return;
+      if (state[k]) {
+        STEPS.forEach(function(s) {
+          var v = saved[k] && saved[k][s.key];
+          if (v !== undefined) state[k][s.key] = v; // keep as-is: false, true, or {done,date}
+        });
+        // Also preserve s6 if stored (hidden but keep the value)
+        if (saved[k] && saved[k]['s6'] !== undefined) state[k]['s6'] = saved[k]['s6'];
+      }
+    });
+  } catch(e) {}
+}
+
+async function saveToStorage() {
+  var data = {};
+  Object.keys(state).forEach(function(k) { data[k] = Object.assign({}, state[k]); });
+  data['__comments__'] = Object.assign({}, comments);
+  data['__notes__'] = { sections: notesData.sections.map(function(s) { return { id:s.id, items:s.items.map(function(item){ return Object.assign({}, item); }), collapsed:s.collapsed }; }) };
+  var savedRemote = false;
+  var ready = await waitForFirebase(3000);
+  if (ready && window.firebaseSave) { savedRemote = await window.firebaseSave(data); }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+  showSaveIndicator(savedRemote ? t('saved') : t('savedLocal'));
+}
+
+function buildStepsData() {
+  var data = {};
+  Object.keys(state).forEach(function(k) { data[k] = Object.assign({}, state[k]); });
+  return data;
+}
+
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveToStorage, 800); }
+function scheduleStepSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveStepsOnly, 800); }
+
+async function saveStepsOnly() {
+  var data = buildStepsData();
+  var savedRemote = false;
+  var ready = await waitForFirebase(3000);
+  if (ready && window.firebaseSave) { savedRemote = await window.firebaseSave(data); }
+  try {
+    var existing = {}; try { existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e2){}
+    Object.assign(existing, data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+  } catch(e) {}
+  showSaveIndicator(savedRemote ? t('saved') : t('savedLocal'));
+}
+
+var saveHideTimer = null;
+function showSaveIndicator(msg) {
+  var el = document.getElementById('save-indicator');
+  el.textContent = msg; el.classList.add('visible');
+  clearTimeout(saveHideTimer);
+  if (msg.startsWith('✓')) { saveHideTimer = setTimeout(function() { el.classList.remove('visible'); }, 2000); }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') { e.preventDefault(); if (!isUnlocked) openModal(); else lockSession(); }
+});
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-input').classList.remove('error');
+  setTimeout(function() { document.getElementById('pin-input').focus(); }, 100);
+  document.getElementById('modal-title').textContent = t('modalTitle');
+  document.getElementById('modal-desc').textContent = t('modalDesc');
+  document.getElementById('modal-cancel').textContent = t('modalCancel');
+  document.getElementById('modal-confirm').textContent = t('modalConfirm');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function submitPin() {
+  var input = document.getElementById('pin-input').value;
+  if (input === CORRECT_PIN) { isUnlocked = true; closeModal(); updateLockUI(); renderDetail(); renderNotes(); }
+  else { var inp = document.getElementById('pin-input'); inp.classList.add('error'); document.getElementById('pin-error').textContent = t('pinWrong'); inp.value = ''; setTimeout(function() { inp.classList.remove('error'); }, 400); }
+}
+function lockSession() { isUnlocked = false; updateLockUI(); renderDetail(); renderNotes(); }
+
+function updateLockUI() {
+  var ind = document.getElementById('lock-indicator'), lbl = document.getElementById('lock-label'), tip = document.getElementById('lock-tip');
+  if (isUnlocked) {
+    ind.classList.add('unlocked'); lbl.textContent = t('unlockLabel');
+    if (tip) tip.textContent = lang === 'fr' ? 'Appuyer sur Ctrl+Shift+A pour verrouiller' : 'Press Ctrl+Shift+A to lock editing';
+  } else {
+    ind.classList.remove('unlocked'); lbl.textContent = t('lockLabel');
+    if (tip) tip.textContent = lang === 'fr' ? 'Appuyer sur Ctrl+Shift+A pour déverrouiller' : 'Press Ctrl+Shift+A to unlock editing';
+  }
+  // Show migrate button only when unlocked AND there are legacy true values
+  var migrateBtn = document.getElementById('migrate-dates-btn');
+  if(migrateBtn) {
+    var hasLegacy = false;
+    if(isUnlocked) {
+      Object.values(state).forEach(function(sm) {
+        STEPS.forEach(function(s) { if(sm[s.key] === true) hasLegacy = true; });
+      });
+    }
+    migrateBtn.style.display = (isUnlocked && hasLegacy) ? 'block' : 'none';
+  }
+}
+
+function migrateLegacyDates() {
+  var today = new Date().toISOString().split('T')[0];
+  var count = 0;
+  Object.keys(state).forEach(function(k) {
+    STEPS.forEach(function(s) {
+      if(state[k][s.key] === true) {
+        state[k][s.key] = { done: true, date: today };
+        count++;
+      }
+    });
+  });
+  if(count > 0) {
+    scheduleStepSave();
+    renderAll();
+    showSaveIndicator(count + ' steps updated with today’s date');
+  }
+}
+
+function stepDone(val) {
+  return val === true || (val && val.done === true);
+}
+function stepDate(val) {
+  if(val && val.date) return val.date;
+  return null;
+}
+function getStatus(stepMap) {
+  var done = STEPS.filter(function(s) { return stepDone(stepMap[s.key]); }).length;
+  if (done === 0) return 'not-started';
+  if (done === STEPS.length) return 'completed';
+  return 'in-progress';
+}
+function statusBadge(st) {
+  var map = {'not-started':'badgeNotStarted','in-progress':'badgeInProgress','completed':'badgeCompleted'};
+  return '<span class="badge ' + st + '">' + t(map[st]) + '</span>';
+}
+function updateCards() {
+  var done=0, prog=0, pend=0;
+  Object.values(state).forEach(function(m) { var s=getStatus(m); if(s==='completed') done++; else if(s==='in-progress') prog++; else pend++; });
+  document.getElementById('cnt-done').textContent = done;
+  document.getElementById('cnt-progress').textContent = prog;
+  document.getElementById('cnt-pending').textContent = pend;
+}
+function getSubStatus(rn, sn) { var k=rn+'|'+sn; return !state[k]?'not-started':getStatus(state[k]); }
+function getRegionBarColor(rn, subs) {
+  var st=subs.map(function(s){return getSubStatus(rn,s);}), done=st.filter(function(s){return s==='completed';}).length, ip=st.filter(function(s){return s==='in-progress';}).length, tot=subs.length;
+  if(done===tot) return '#70AD47';
+  if(done>0&&ip===0) return 'color-mix(in srgb, #70AD47 '+Math.round(done/tot*100)+'%, #939DA8)';
+  if(ip>0) return '#F4B942';
+  return '#939DA8';
+}
+
+function renderGantt() {
+  var monthRow = document.getElementById('gantt-month-row');
+  if (monthRow) {
+    var months = t('months'), dayWidths = [3,31,30,31,31,30,31,30,31,31], totalDays = 279;
+    monthRow.innerHTML = months.map(function(m,i) {
+      return '<div class="month-cell" style="flex:none;width:' + (dayWidths[i]/totalDays*100).toFixed(3) + '%">' + m + '</div>';
+    }).join('');
+  }
+  var body = document.getElementById('gantt-body'); body.innerHTML = '';
+  var tooltip = document.getElementById('gantt-tooltip');
+  PHASES.forEach(function(p) {
+    var row = document.createElement('div'); row.className = 'phase-row';
+    var area = document.createElement('div'); area.className = 'bar-area';
+    MONTH_BREAKS.forEach(function(b) { var gl=document.createElement('div'); gl.className='grid-line'; gl.style.left=(b*100)+'%'; area.appendChild(gl); });
+    var region = REGIONS.find(function(r){return r.name===p.region;}), subs=region?region.subs:[];
+    var bar = document.createElement('div'); bar.className='bar';
+    bar.style.left=(p.start*100)+'%'; bar.style.width=(p.dur*100)+'%';
+    bar.style.background=subs.length>0?getRegionBarColor(p.region,subs):p.color;
+    var lbl=document.createElement('span'); lbl.textContent=p.name;
+    lbl.style.cssText='text-shadow:0 1px 2px rgba(0,0,0,0.25);overflow:hidden;text-overflow:clip;white-space:nowrap;flex:1;min-width:0';
+    bar.style.overflow='hidden'; bar.appendChild(lbl); area.appendChild(bar); row.appendChild(area); body.appendChild(row);
+    var mf=t('monthsFull');
+    row.addEventListener('mouseenter', function() {
+      var sm=mf[Math.floor(p.start)], em=mf[Math.min(Math.floor(p.start+p.dur),TOTAL_MONTHS-1)];
+      var d=subs.filter(function(s){return getSubStatus(p.region,s)==='completed';}).length;
+      var ip=subs.filter(function(s){return getSubStatus(p.region,s)==='in-progress';}).length;
+      document.getElementById('tt-name').textContent=p.name;
+      document.getElementById('tt-detail').textContent=lang==='fr'?(sm+' → '+em+'  ·  '+p.weeks+'w  ·  '+d+'✓ '+ip+'⏳'):(sm+' → '+em+'  ·  '+p.weeks+'w  ·  '+d+' done, '+ip+' in progress');
+      document.getElementById('tt-desc').textContent=p.desc||''; tooltip.style.opacity='1';
+    });
+    row.addEventListener('mousemove', function(e){tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-10)+'px';});
+    row.addEventListener('mouseleave', function(){tooltip.style.opacity='0';});
+    row.style.cursor='default';
+  });
+  var fl=document.getElementById('gantt-footer-left'), fr2=document.getElementById('gantt-footer-right');
+  if(fl) fl.textContent=lang==='fr'?'Avril 2026':'April 2026';
+  if(fr2) fr2.textContent=lang==='fr'?'Janvier 2027':'January 2027';
+}
+
+// ── REAL GANTT ────────────────────────────────────────────────────────────
+// Timeline: May 15 → Jan 31 = 261 days total
+// Month widths (days from May 15): May=17, Jun=30, Jul=31, Aug=31, Sep=30, Oct=31, Nov=30, Dec=31, Jan=31
+var REAL_TOTAL_DAYS = 261;
+var REAL_DAY_WIDTHS = [17, 30, 31, 31, 30, 31, 30, 31, 31];
+var REAL_MONTHS_EN = ['May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.','Jan.'];
+var REAL_MONTHS_FR = ['Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.','Jan.'];
+
+// Map each PHASE to its planned start/dur as fractions of 261 days from May 15
+// Original planned dates (from Apr 28 baseline):
+// AFR/AFO: Apr28-Jun10 → from May15: 0 to 26d → start=0, dur=26/261
+// AFR/MOI: Jun8-Jul20 → from May15: 24d to 66d
+// AFR/NG:  Jul21-Aug9 → from May15: 67d to 86d
+// AFR/ACE: Aug3-Sep14 → from May15: 80d to 122d
+// AFR/ASNE: Sep14-Oct11 → from May15: 122d to 149d
+// APMO: Oct8-Nov8 → from May15: 146d to 177d
+// EOMC: Oct27-Dec7 → from May15: 165d to 206d
+// LUB: Dec4-Jan8 → from May15: 203d to 238d
+var REAL_PHASES = [
+  { region:'AFR/AFO',   planStart:0,     planDur:0.055,  subs:["Côte d'Ivoire","Ghana","Cameroun","Guinée Equatoriale"], label:'AFR/AFO (pilot)', customColor:true },
+  { region:'EOMC_EARLY',planStart:0.068, planDur:0.045,  subs:["Réunion","Antilles Guyane"], label:'EOMC (pilot)', customColor:true },
+  { region:'AFR/AFO',   planStart:0.123, planDur:0.065,  subs:["Togo","Guinée Conakry","Sénégal","Gabon"], label:'AFR/AFO' },
+  { region:'AFR/MOI',   planStart:0.165, planDur:0.180, subs:null },
+  { region:'AFR/NG',    planStart:0.290, planDur:0.073,  subs:null },
+  { region:'AFR/ACE',   planStart:0.345, planDur:0.1609, subs:null },
+  { region:'AFR/ASNE',  planStart:0.510, planDur:0.1034, subs:null },
+  { region:'APMO',      planStart:0.600, planDur:0.1188, subs:null },
+  { region:'EOMC',      planStart:0.670, planDur:0.110,  subs:['Rép. Dominicaine','Polynésie','Jamaïque','Mayotte','Porto Rico'] },
+  { region:'LUB',       planStart:0.820, planDur:0.1341, subs:null },
+];
+
+function renderRealGantt() {
+  var body = document.getElementById('real-gantt-body');
+  if(!body) return;
+  body.innerHTML = '';
+
+  var title = document.getElementById('real-gantt-title');
+  if(title) title.textContent = lang==='fr' ? 'Progression réelle - Filiales actives' : 'Actual Progress - Active Subsidiaries';
+  var sub = document.getElementById('real-gantt-subtitle');
+  if(sub) sub.textContent = lang==='fr' ? 'Uniquement les filiales avec au moins une étape complétée' : 'Only subsidiaries with at least one step completed';
+
+  // Collect all subsidiaries that have at least one step done
+  var activeSubs = [];
+  var allDates = [];
+
+  REGIONS.forEach(function(r) {
+    r.subs.forEach(function(s) {
+      var key = r.name + '|' + s;
+      var sm = state[key];
+      if(!sm) return;
+      var dates = [];
+      STEPS.forEach(function(st) {
+        var v = sm[st.key];
+        if(stepDone(v)) {
+          var d = stepDate(v);
+          if(d) dates.push(d);
+        }
+      });
+      if(dates.length === 0) return; // not started
+      dates.sort();
+      allDates = allDates.concat(dates);
+      activeSubs.push({ region: r.name, sub: s, key: key, sm: sm, dates: dates });
+    });
+  });
+
+  if(activeSubs.length === 0) {
+    body.innerHTML = '<p style="font-size:12px;color:#aaa;font-style:italic;padding:16px 0">No subsidiaries started yet.</p>';
+    return;
+  }
+
+  allDates.sort();
+  var today = new Date().toISOString().split('T')[0];
+  var minDate = allDates[0];
+  var maxDate = today; // always extend to today
+
+  function daysBetween(a, b) {
+    return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000));
+  }
+  var totalDays = daysBetween(minDate, maxDate) + 4; // small padding
+
+  // Month header
+  var monthRow = document.createElement('div');
+  monthRow.style.cssText = 'display:flex;margin-bottom:6px;border-bottom:0.5px solid #e0e0e0;padding-bottom:4px;';
+
+  // Label column
+  var labelSpacer = document.createElement('div');
+  labelSpacer.style.cssText = 'width:160px;flex-shrink:0;';
+  monthRow.appendChild(labelSpacer);
+
+  // Generate month ticks
+  var barWrap = document.createElement('div');
+  barWrap.style.cssText = 'flex:1;position:relative;min-width:400px;';
+
+  var d = new Date(minDate);
+  d.setDate(1);
+  while(d <= new Date(maxDate)) {
+    var monthStr = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+    var pct = daysBetween(minDate, d.toISOString().split('T')[0]) / totalDays * 100;
+    var tick = document.createElement('span');
+    tick.textContent = monthStr;
+    tick.style.cssText = 'position:absolute;left:' + pct.toFixed(1) + '%;font-size:10px;color:#999;transform:translateX(-50%);white-space:nowrap;';
+    barWrap.appendChild(tick);
+    d.setMonth(d.getMonth() + 1);
+  }
+  monthRow.appendChild(barWrap);
+  body.appendChild(monthRow);
+
+  // Today line label
+  var todayPct = (daysBetween(minDate, today) / totalDays * 100).toFixed(1);
+
+  // Sort active subs by region then name
+  activeSubs.sort(function(a,b) {
+    if(a.region !== b.region) return a.region.localeCompare(b.region);
+    return a.sub.localeCompare(b.sub);
+  });
+
+  // Step colors
+  var stepColors = ['#2E5FA3','#0F6E56','#F4B942','#854F0B','#534AB7'];
+
+  activeSubs.forEach(function(item) {
+    var sm = item.sm;
+    var doneCount = STEPS.filter(function(st){ return stepDone(sm[st.key]); }).length;
+    var isCompleted = doneCount === STEPS.length;
+
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;height:34px;margin-bottom:5px;';
+
+    // Label
+    var label = document.createElement('div');
+    label.style.cssText = 'width:160px;flex-shrink:0;font-size:11px;font-weight:600;color:#1F3864;padding-right:8px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    var regionTag = document.createElement('span');
+    regionTag.style.cssText = 'font-size:9px;background:#e8eef8;color:#2E5FA3;padding:1px 5px;border-radius:3px;margin-right:4px;font-weight:700;';
+    regionTag.textContent = item.region.replace('AFR/','');
+    label.appendChild(regionTag);
+    label.appendChild(document.createTextNode(item.sub));
+    row.appendChild(label);
+
+    // Bar area
+    var area = document.createElement('div');
+    area.style.cssText = 'flex:1;position:relative;height:100%;min-width:400px;';
+
+    // Today line
+    var todayLine = document.createElement('div');
+    todayLine.style.cssText = 'position:absolute;left:' + todayPct + '%;top:0;bottom:0;width:1.5px;background:rgba(220,0,0,0.25);z-index:1;pointer-events:none;';
+    area.appendChild(todayLine);
+
+    // Background track
+    var track = document.createElement('div');
+    track.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:10px;background:#eef0f3;border-radius:99px;left:0;right:0;';
+    area.appendChild(track);
+
+    // Step dots/segments
+    STEPS.forEach(function(st, idx) {
+      var v = sm[st.key];
+      if(!stepDone(v)) return;
+      var d = stepDate(v);
+      if(!d) d = minDate; // legacy true without date
+      var pct = (daysBetween(minDate, d) / totalDays * 100).toFixed(2);
+      var dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:' + (isCompleted ? '#70AD47' : stepColors[idx % stepColors.length]) + ';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);left:' + pct + '%;z-index:3;cursor:default;';
+      dot.title = (lang==='fr' ? 'Étape' : 'Step') + ' ' + st.num + ' · ' + d;
+      area.appendChild(dot);
+    });
+
+    // Connecting line between first and last step
+    if(item.dates.length > 1) {
+      var firstPct = (daysBetween(minDate, item.dates[0]) / totalDays * 100).toFixed(2);
+      var lastPct = (daysBetween(minDate, item.dates[item.dates.length-1]) / totalDays * 100).toFixed(2);
+      var line = document.createElement('div');
+      line.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:4px;border-radius:2px;left:' + firstPct + '%;width:' + (lastPct - firstPct).toFixed(2) + '%;background:' + (isCompleted ? '#70AD47' : '#2E5FA3') + ';opacity:0.5;z-index:2;';
+      area.appendChild(line);
+    }
+
+    row.appendChild(area);
+    body.appendChild(row);
+  });
+
+  // Today label at bottom
+  var todayLabel = document.createElement('div');
+  todayLabel.style.cssText = 'display:flex;margin-top:8px;padding-top:6px;border-top:0.5px solid #ebebeb;';
+  var todayLabelSpacer = document.createElement('div');
+  todayLabelSpacer.style.cssText = 'width:160px;flex-shrink:0;';
+  todayLabel.appendChild(todayLabelSpacer);
+  var todayLabelBar = document.createElement('div');
+  todayLabelBar.style.cssText = 'flex:1;position:relative;min-width:400px;';
+  var todayTxt = document.createElement('span');
+  todayTxt.textContent = (lang==='fr'?'Aujourd’hui':'Today') + ' · ' + today;
+  todayTxt.style.cssText = 'position:absolute;left:' + todayPct + '%;font-size:10px;color:rgba(200,0,0,0.6);transform:translateX(-50%);white-space:nowrap;';
+  todayLabelBar.appendChild(todayTxt);
+  todayLabel.appendChild(todayLabelBar);
+  body.appendChild(todayLabel);
+}
+
+function renderStepsLegend() {
+  var grid=document.getElementById('steps-legend-grid'); grid.innerHTML='';
+  STEPS.forEach(function(s) {
+    var div=document.createElement('div'); div.className='step-pill'; div.title=lang==='en'?s.descEN:s.descFR;
+    div.innerHTML='<div class="snum">'+s.num+'</div><div><strong>'+(lang==='en'?s.labelEN:s.labelFR)+'</strong><br><span style="color:#555;font-size:10px">'+(lang==='en'?s.descEN:s.descFR)+'</span></div>';
+    grid.appendChild(div);
+  });
+}
+
+function makeFilterBtn(colId, title) {
+  var btn = document.createElement('button');
+  btn.className = 'col-filter-btn' + (colFilters[colId] && colFilters[colId].length ? ' active' : '');
+  btn.textContent = '\u25bc';
+  btn.title = lang === 'fr' ? 'Filtrer' : 'Filter';
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    openFilterPopup(colId, title, btn);
+  });
+  return btn;
+}
+
+function openFilterPopup(colId, title, anchorBtn) {
+  if(activeFilterPopup) { activeFilterPopup.classList.remove('open'); activeFilterPopup.remove(); activeFilterPopup = null; }
+  var popup = document.createElement('div');
+  popup.className = 'col-filter-popup open';
+
+  var titleEl = document.createElement('div');
+  titleEl.className = 'col-filter-popup-title';
+  titleEl.textContent = title;
+  popup.appendChild(titleEl);
+
+  var options = colId === 'status'
+    ? [{val:'completed',label:lang==='fr'?'Compl\u00e9t\u00e9':'Completed',icon:'\u2705'},
+       {val:'in-progress',label:lang==='fr'?'En cours':'In progress',icon:'\U0001f7e1'},
+       {val:'not-started',label:lang==='fr'?'Non d\u00e9marr\u00e9':'Not started',icon:'\u2b1c'}]
+    : [{val:'done',label:lang==='fr'?'Fait':'Done',icon:'\u2705'},
+       {val:'not-done',label:lang==='fr'?'Non fait':'Not done',icon:'\u2b1c'}];
+
+  var current = colFilters[colId] || [];
+  options.forEach(function(opt) {
+    var row = document.createElement('div'); row.className = 'col-filter-option';
+    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = opt.val;
+    cb.checked = current.length === 0 || current.indexOf(opt.val) !== -1;
+    var lbl = document.createElement('label'); lbl.style.cursor = 'pointer';
+    lbl.textContent = opt.icon + ' ' + opt.label;
+    cb.id = 'cf-' + colId + '-' + opt.val;
+    lbl.htmlFor = 'cf-' + colId + '-' + opt.val;
+    row.appendChild(cb); row.appendChild(lbl); popup.appendChild(row);
+  });
+
+  var footer = document.createElement('div'); footer.className = 'col-filter-popup-footer';
+  var applyBtn = document.createElement('button'); applyBtn.className = 'col-filter-apply';
+  applyBtn.textContent = lang === 'fr' ? 'Appliquer' : 'Apply';
+  applyBtn.addEventListener('click', function() {
+    var checked = Array.from(popup.querySelectorAll('input[type=checkbox]:checked')).map(function(c){return c.value;});
+    if(checked.length === options.length || checked.length === 0) { delete colFilters[colId]; }
+    else { colFilters[colId] = checked; }
+    popup.classList.remove('open'); popup.remove(); activeFilterPopup = null;
+    renderDetailHeader(); renderDetail(); updateColFilterClearBtn();
+  });
+  var resetBtn = document.createElement('button'); resetBtn.className = 'col-filter-reset';
+  resetBtn.textContent = lang === 'fr' ? 'R\u00e9initialiser' : 'Reset';
+  resetBtn.addEventListener('click', function() {
+    delete colFilters[colId];
+    popup.classList.remove('open'); popup.remove(); activeFilterPopup = null;
+    renderDetailHeader(); renderDetail(); updateColFilterClearBtn();
+  });
+  footer.appendChild(applyBtn); footer.appendChild(resetBtn); popup.appendChild(footer);
+  document.body.appendChild(popup); activeFilterPopup = popup;
+
+  var rect = anchorBtn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 4) + 'px';
+  popup.style.left = Math.max(4, rect.left - 60) + 'px';
+
+  setTimeout(function() {
+    document.addEventListener('click', function handler(e) {
+      // Only close if click is outside the popup
+      if(activeFilterPopup && !activeFilterPopup.contains(e.target)) {
+        activeFilterPopup.classList.remove('open'); activeFilterPopup.remove(); activeFilterPopup = null;
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 10);
+}
+
+function updateColFilterClearBtn() {
+  var hasColFilter = Object.keys(colFilters).length > 0;
+  var existing = document.getElementById('col-filter-clear');
+  if(hasColFilter && !existing) {
+    var btn = document.createElement('button');
+    btn.id = 'col-filter-clear';
+    btn.className = 'clear-filters-btn visible';
+    btn.style.marginLeft = '4px';
+    var x = document.createElement('span'); x.textContent = '\u2715';
+    var lbl = document.createElement('span'); lbl.textContent = lang==='fr'?'Filtres colonnes':'Column filters';
+    btn.appendChild(x); btn.appendChild(lbl);
+    btn.addEventListener('click', function() {
+      colFilters = {}; btn.remove(); renderDetailHeader(); renderDetail();
+    });
+    document.querySelector('.filters').appendChild(btn);
+  } else if(!hasColFilter && existing) {
+    existing.remove();
+  }
+}
+
+function renderDetailHeader() {
+  var tr = document.getElementById('detail-head');
+  tr.innerHTML = '';
+
+  function plainTh(text, cls) {
+    var th = document.createElement('th');
+    if(cls) th.className = cls;
+    th.textContent = text;
+    return th;
+  }
+
+  tr.appendChild(plainTh('', 'left'));
+  tr.appendChild(plainTh(t('thZone'), 'left'));
+  tr.appendChild(plainTh(t('thSub'), 'left'));
+  tr.appendChild(plainTh(t('thPeriod')));
+
+  STEPS.forEach(function(s) {
+    var th = document.createElement('th');
+    th.title = lang==='en' ? s.descEN : s.descFR;
+    th.style.cssText = 'white-space:nowrap;';
+    if(colFilters[s.key] && colFilters[s.key].length) th.style.background = '#1a4a8a';
+    var label = lang==='en' ? s.labelEN : s.labelFR;
+    var span = document.createElement('span'); span.textContent = label;
+    th.appendChild(span);
+    th.appendChild(makeFilterBtn(s.key, label));
+    tr.appendChild(th);
+  });
+
+  tr.appendChild(plainTh(t('thProgress')));
+
+  var statusTh = document.createElement('th');
+  statusTh.style.cssText = 'white-space:nowrap;';
+  if(colFilters['status'] && colFilters['status'].length) statusTh.style.background = '#1a4a8a';
+  var statusSpan = document.createElement('span'); statusSpan.textContent = t('thStatus');
+  statusTh.appendChild(statusSpan);
+  statusTh.appendChild(makeFilterBtn('status', t('thStatus')));
+  tr.appendChild(statusTh);
+
+  tr.appendChild(plainTh(t('thNotes')));
+}
+
+function clearFilters() {
+  document.getElementById('filter-region').value='';
+  document.getElementById('filter-search').value='';
+  document.getElementById('filter-status').value='';
+  updateClearBtn(); renderDetail();
+}
+function updateClearBtn() {
+  var has=document.getElementById('filter-region').value||document.getElementById('filter-search').value||document.getElementById('filter-status').value;
+  document.getElementById('clear-filters-btn').classList.toggle('visible',!!has);
+}
+
+var dragSrcKey=null;
+// colFilters: key = column id ('s1'..'s6' or 'status'), value = array of allowed values
+// e.g. {'s1': ['done'], 'status': ['completed','in-progress']}
+var colFilters = {};
+var activeFilterPopup = null;  // currently open popup el
+
+function renderDetail() {
+  var filterRegion=document.getElementById('filter-region').value;
+  var filterSearch=document.getElementById('filter-search').value.toLowerCase();
+  var filterStatus=document.getElementById('filter-status').value;
+  var mf=t('monthsFull'), tbody=document.getElementById('detail-body');
+  tbody.innerHTML='';
+
+  // Build flat list for sorting
+  var allRows=[];
+  REGIONS.forEach(function(r) {
+    if(filterRegion&&filterRegion!==r.name) return;
+    var orderedSubs=subOrder[r.name]||r.subs;
+    orderedSubs.forEach(function(sub) {
+      if(filterSearch&&!sub.toLowerCase().includes(filterSearch)) return;
+      var key=r.name+'|'+sub, stepMap=state[key], st=getStatus(stepMap);
+      if(filterStatus&&filterStatus!==st) return;
+
+      // Apply column-level filters
+      var passColFilter = true;
+      Object.keys(colFilters).forEach(function(colId) {
+        var allowed = colFilters[colId];
+        if(!allowed || allowed.length === 0) return;
+        if(colId === 'status') {
+          if(allowed.indexOf(st) === -1) passColFilter = false;
+        } else {
+          var isDone = stepMap[colId] ? 'done' : 'not-done';
+          if(allowed.indexOf(isDone) === -1) passColFilter = false;
+        }
+      });
+      if(!passColFilter) return;
+      allRows.push({r:r, sub:sub, key:key, stepMap:stepMap, st:st});
+    });
+  });
+
+
+
+  allRows.forEach(function(item) {
+    var r=item.r, sub=item.sub, key=item.key, stepMap=item.stepMap, st=item.st;
+    var done=STEPS.filter(function(s){return stepDone(stepMap[s.key]);}).length;
+    var pct=Math.round(done/STEPS.length*100);
+    var period=r.start!==r.end?(mf[r.start]+' - '+mf[r.end]):mf[r.start];
+
+    var tr=document.createElement('tr');
+    tr.dataset.key=key;
+    tr.setAttribute('draggable',isUnlocked?'true':'false');
+
+    // Drag handle
+    var handleTd=document.createElement('td'); handleTd.style.cssText='padding:4px 4px 4px 8px';
+    var handle=document.createElement('span'); handle.className='drag-handle'+(isUnlocked?'':' locked');
+    handle.title=isUnlocked?'Drag to reorder':t('lockedTip'); handle.textContent='⣿';
+    handleTd.appendChild(handle); tr.appendChild(handleTd);
+
+    // Zone
+    var zoneTd=document.createElement('td'); zoneTd.className='left';
+    zoneTd.innerHTML='<span class="region-tag">'+r.name+'</span>'; tr.appendChild(zoneTd);
+
+    // Subsidiary - link if gap analysis exists
+    var subTd=document.createElement('td'); subTd.className='left'; subTd.style.fontWeight='600';
+    var gapUrl=GAP_ANALYSIS_URLS[key];
+    if(gapUrl) {
+      var link=document.createElement('a'); link.href=gapUrl; link.target='_blank'; link.rel='noopener noreferrer';
+      link.textContent=sub; link.title=lang==='fr'?'Voir l\u2019analyse des écarts':'View gap analysis';
+      link.style.cssText='color:#2E5FA3;text-decoration:none;border-bottom:1px dashed #2E5FA3;';
+      link.addEventListener('mouseenter',function(){this.style.color='#1F3864';this.style.borderBottomStyle='solid';});
+      link.addEventListener('mouseleave',function(){this.style.color='#2E5FA3';this.style.borderBottomStyle='dashed';});
+      subTd.appendChild(link);
+    } else { subTd.textContent=sub; }
+    tr.appendChild(subTd);
+
+    // Period
+    var periodTd=document.createElement('td'); periodTd.style.cssText='color:#555;white-space:nowrap;font-size:11px';
+    periodTd.textContent=period; tr.appendChild(periodTd);
+
+    // Steps
+    STEPS.forEach(function(s) {
+      var val = stepMap[s.key];
+      var done = stepDone(val);
+      var date = stepDate(val);
+      var td=document.createElement('td');
+      td.className='step-check '+(isUnlocked?'editable':'locked')+(done?' done':'');
+      var titleStr = done ? ('Done' + (date?' · '+date:'') + (isUnlocked?' · click to undo':'')) : (isUnlocked?'Click to mark done':t('lockedTip'));
+      td.title = titleStr;
+      td.textContent = done?'✅':'⬜';
+      if(isUnlocked){(function(k,sk){td.addEventListener('click',function(){toggleStep(k,sk);});}(key,s.key));}
+      tr.appendChild(td);
+    });
+
+    // Progress
+    var progTd=document.createElement('td');
+    progTd.innerHTML='<div style="display:flex;align-items:center;gap:8px;justify-content:center"><div class="prog-wrap"><div class="prog-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#555">'+pct+'%</span></div>';
+    tr.appendChild(progTd);
+
+    // Status
+    var statusTd=document.createElement('td'); statusTd.innerHTML=statusBadge(st); tr.appendChild(statusTd);
+
+    // Notes
+    var noteTd=document.createElement('td'); noteTd.style.cssText='white-space:nowrap;';
+    var existingComment=comments[key]||'';
+    var noteBtn=document.createElement('button');
+    noteBtn.className='comment-btn'+(existingComment?' has-comment':'');
+    noteBtn.textContent=existingComment?('💬 '+existingComment.slice(0,22)+(existingComment.length>22?'…':'')):t('addNote');
+    noteBtn.title=existingComment||(lang==='fr'?'Ajouter une note':'Add a note');
+    noteTd.appendChild(noteBtn); tr.appendChild(noteTd);
+
+    // Note expansion row
+    var noteRow=document.createElement('tr'); noteRow.className='comment-row'; noteRow.style.display='none';
+    var noteRowTd=document.createElement('td'); noteRowTd.colSpan=11+STEPS.length;
+    var noteBox=document.createElement('div'); noteBox.className='comment-box';
+    if(isUnlocked) {
+      var ta=document.createElement('textarea'); ta.className='comment-textarea';
+      ta.placeholder=t('notePlaceholder'); ta.value=existingComment;
+      var saveBtn=document.createElement('button'); saveBtn.className='comment-save-btn'; saveBtn.textContent=t('saveNote');
+      (function(k,btn,textarea,nb){
+        saveBtn.addEventListener('click',function(){
+          comments[k]=textarea.value.trim(); scheduleSave();
+          nb.textContent=comments[k]?('💬 '+comments[k].slice(0,22)+(comments[k].length>22?'…':'')):t('addNote');
+          nb.className='comment-btn'+(comments[k]?' has-comment':'');
+          nb.title=comments[k]||(lang==='fr'?'Ajouter une note':'Add a note');
+          noteRow.style.display='none';
+        });
+      }(key,saveBtn,ta,noteBtn));
+      noteBox.appendChild(ta); noteBox.appendChild(saveBtn);
+    } else {
+      var preview=document.createElement('div'); preview.style.cssText='font-size:12px;color:#555;font-style:italic;padding:4px 0';
+      preview.textContent=existingComment||t('noNote'); noteBox.appendChild(preview);
+    }
+    noteRowTd.appendChild(noteBox); noteRow.appendChild(noteRowTd);
+    (function(nr,nb){nb.addEventListener('click',function(){nr.style.display=nr.style.display!=='none'?'none':'table-row';});}(noteRow,noteBtn));
+
+    tbody.appendChild(tr);
+    tbody.appendChild(noteRow);
+  });
+
+  // Drag handlers (only on data rows, skip comment rows)
+  var dragOverRow=null;
+  tbody.querySelectorAll('tr[data-key]').forEach(function(row) {
+    row.addEventListener('dragstart',function(e){dragSrcKey=row.dataset.key;row.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    row.addEventListener('dragend',function(){row.classList.remove('dragging');if(dragOverRow){dragOverRow.classList.remove('drag-over');dragOverRow=null;}});
+    row.addEventListener('dragover',function(e){e.preventDefault();e.dataTransfer.dropEffect='move';if(dragOverRow&&dragOverRow!==row)dragOverRow.classList.remove('drag-over');dragOverRow=row;row.classList.add('drag-over');});
+    row.addEventListener('dragleave',function(){row.classList.remove('drag-over');if(dragOverRow===row)dragOverRow=null;});
+    row.addEventListener('drop',function(e){
+      e.preventDefault();row.classList.remove('drag-over');dragOverRow=null;
+      if(!isUnlocked||!dragSrcKey||dragSrcKey===row.dataset.key) return;
+      var sp=dragSrcKey.split('|'),sr=sp[0],ss=sp.slice(1).join('|');
+      var dp=row.dataset.key.split('|'),dr=dp[0],ds=dp.slice(1).join('|');
+      if(sr!==dr) return;
+      var order=subOrder[sr],si=order.indexOf(ss),di=order.indexOf(ds);
+      if(si===-1||di===-1) return;
+      order.splice(si,1);order.splice(di,0,ss);renderDetail();
+    });
+  });
+}
+
+function toggleStep(key,stepKey){
+  if(!isUnlocked) return;
+  var cur = state[key][stepKey];
+  // cur can be false, true (legacy), or {done, date}
+  var isDone = cur === true || (cur && cur.done);
+  if(isDone) {
+    state[key][stepKey] = false;
+  } else {
+    var today = new Date().toISOString().split('T')[0];
+    state[key][stepKey] = { done: true, date: today };
+  }
+  renderAll();
+  scheduleStepSave();
+}
+
+function renderNotes() {
+  var body = document.getElementById('notes-body');
+  if(!body) return;
+  body.innerHTML = '';
+
+  var hint = document.getElementById('notes-lock-hint');
+  if(hint) hint.textContent = isUnlocked
+    ? (lang==='fr' ? 'Mode édition actif' : 'Editing active')
+    : (lang==='fr' ? 'Déverrouiller pour ajouter des notes' : 'Unlock editing to add notes');
+
+  notesData.sections.forEach(function(sec) {
+    var sectionEl = document.createElement('div');
+    sectionEl.className = 'notes-section';
+
+    // Header
+    var header = document.createElement('div');
+    header.className = 'notes-section-header';
+    var h3 = document.createElement('h3');
+    h3.textContent = lang==='en' ? sec.titleEN : sec.titleFR;
+    var toggle = document.createElement('span');
+    toggle.className = 'section-toggle';
+    toggle.textContent = sec.collapsed ? '▶ ' + sec.items.length + ' notes' : '▼';
+    header.appendChild(h3); header.appendChild(toggle);
+    header.addEventListener('click', function() {
+      sec.collapsed = !sec.collapsed; scheduleSave(); renderNotes();
+    });
+    sectionEl.appendChild(header);
+
+    // Body
+    var sBody = document.createElement('div');
+    sBody.className = 'notes-section-body' + (sec.collapsed ? ' collapsed' : '');
+
+    // Existing notes
+    if(sec.items.length === 0 && !isUnlocked) {
+      var empty = document.createElement('p');
+      empty.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:8px 0';
+      empty.textContent = lang==='fr' ? 'Aucune note pour le moment.' : 'No notes yet.';
+      sBody.appendChild(empty);
+    }
+
+    sec.items.forEach(function(item, idx) {
+      var noteEl = document.createElement('div');
+      noteEl.className = 'note-item';
+
+      var noteHeader = document.createElement('div');
+      noteHeader.className = 'note-item-header';
+
+      if(item.zone) {
+        var zoneTag = document.createElement('span');
+        zoneTag.className = 'note-zone'; zoneTag.textContent = item.zone;
+        noteHeader.appendChild(zoneTag);
+      }
+
+      var prioEl = document.createElement('span');
+      prioEl.className = 'note-priority ' + (item.priority || 'medium');
+      var prioLabels = { high: lang==='fr'?'Haute':'High', medium: lang==='fr'?'Moyenne':'Medium', low: lang==='fr'?'Faible':'Low', resolved: lang==='fr'?'Résolu':'Resolved' };
+      prioEl.textContent = prioLabels[item.priority] || item.priority;
+      noteHeader.appendChild(prioEl);
+
+      // Status badge  -  only for friction + nextsteps sections
+      var hasStatus = (sec.id === 'friction' || sec.id === 'nextsteps' || sec.id === 'achievements');
+      if(hasStatus && item.status) {
+        var statusEl = document.createElement('span');
+        statusEl.className = 'note-status ' + item.status;
+        var statusLabels = { open: lang==='fr'?'Ouvert':'Open', watching: lang==='fr'?'En suivi':'Watching', resolved: lang==='fr'?'Résolu':'Resolved' };
+        statusEl.textContent = statusLabels[item.status] || item.status;
+        noteHeader.appendChild(statusEl);
+      }
+
+      var titleEl = document.createElement('span');
+      titleEl.className = 'note-title'; titleEl.textContent = item.title || '';
+      noteHeader.appendChild(titleEl);
+
+      if(item.date) {
+        var dateEl = document.createElement('span');
+        dateEl.className = 'note-date'; dateEl.textContent = item.date;
+        noteHeader.appendChild(dateEl);
+      }
+
+      noteEl.appendChild(noteHeader);
+
+      if(item.body) {
+        var bodyEl = document.createElement('div');
+        bodyEl.className = 'note-body'; bodyEl.textContent = item.body;
+        noteEl.appendChild(bodyEl);
+      }
+
+      if(isUnlocked) {
+        // Edit button
+        var editBtn = document.createElement('button');
+        editBtn.className = 'note-edit-btn'; editBtn.textContent = '✎';
+        editBtn.title = lang==='fr' ? 'Modifier' : 'Edit';
+
+        // Inline edit form
+        var editForm = document.createElement('div');
+        editForm.className = 'note-edit-form';
+
+        var editRow1 = document.createElement('div'); editRow1.style.cssText = 'display:flex;gap:6px;';
+        var editTitle = document.createElement('input'); editTitle.value = item.title || ''; editTitle.placeholder = lang==='fr'?'Titre':'Title'; editTitle.style.flex='2';
+        var editPrio = document.createElement('select'); editPrio.style.flex='1';
+        [['high',lang==='fr'?'Haute':'High'],['medium',lang==='fr'?'Moyenne':'Medium'],['low',lang==='fr'?'Faible':'Low'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
+          var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; if(o[0]===item.priority) opt.selected=true; editPrio.appendChild(opt);
+        });
+        editRow1.appendChild(editTitle); editRow1.appendChild(editPrio);
+
+        if(hasStatus) {
+          var editStatus = document.createElement('select'); editStatus.style.flex='1';
+          [['',' -  Status'],['open',lang==='fr'?'Ouvert':'Open'],['watching',lang==='fr'?'En suivi':'Watching'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
+            var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; if(o[0]===(item.status||'')) opt.selected=true; editStatus.appendChild(opt);
+          });
+          editRow1.appendChild(editStatus);
+        }
+        editForm.appendChild(editRow1);
+
+        var editBody = document.createElement('textarea'); editBody.value = item.body || ''; editBody.placeholder = lang==='fr'?'Description…':'Description…';
+        editForm.appendChild(editBody);
+
+        var editRow2 = document.createElement('div'); editRow2.style.cssText='display:flex;gap:6px;align-items:center;';
+        var editDate = document.createElement('input'); editDate.type='date'; editDate.value=item.date||''; editDate.style.flex='1';
+        var editSave = document.createElement('button'); editSave.className='note-edit-save'; editSave.textContent=lang==='fr'?'Enregistrer':'Save';
+        var editCancel = document.createElement('button'); editCancel.className='note-edit-cancel'; editCancel.textContent=lang==='fr'?'Annuler':'Cancel';
+        editRow2.appendChild(editDate); editRow2.appendChild(editSave); editRow2.appendChild(editCancel);
+        editForm.appendChild(editRow2);
+
+        (function(itm, ef, eb, ep, et, ed, es_el, hasS) {
+          editBtn.addEventListener('click', function() {
+            ef.style.display = ef.style.display === 'none' ? 'block' : 'none';
+          });
+          editCancel.addEventListener('click', function() { ef.style.display = 'none'; });
+          editSave.addEventListener('click', function() {
+            itm.title = et.value.trim();
+            itm.body = eb.value.trim();
+            itm.priority = ep.value;
+            itm.date = ed.value;
+            if(hasS && es_el) itm.status = es_el.value;
+            scheduleSave(); renderNotes();
+          });
+        }(item, editForm, editBody, editPrio, editTitle, editDate, hasStatus ? editForm.querySelector('select:last-of-type') : null, hasStatus));
+
+        noteEl.appendChild(editForm);
+
+        // Delete button
+        var delBtn = document.createElement('button');
+        delBtn.className = 'note-delete-btn'; delBtn.textContent = '✕';
+        delBtn.title = lang==='fr' ? 'Supprimer' : 'Delete';
+        (function(secRef, i){ delBtn.addEventListener('click', function() {
+          secRef.items.splice(i, 1); scheduleSave(); renderNotes();
+        }); }(sec, idx));
+        noteEl.appendChild(delBtn);
+        noteEl.appendChild(editBtn);
+      }
+
+      sBody.appendChild(noteEl);
+    });
+
+    // Add note form (unlocked only)
+    if(isUnlocked) {
+      var addToggle = document.createElement('button');
+      addToggle.className = 'add-note-toggle';
+      addToggle.textContent = lang==='fr' ? '+ Ajouter une note' : '+ Add note';
+      sBody.appendChild(addToggle);
+
+      var form = document.createElement('div');
+      form.className = 'add-note-form';
+      form.style.display = 'none';
+
+      var row1 = document.createElement('div'); row1.className = 'add-note-row';
+
+      var titleInput = document.createElement('input');
+      titleInput.placeholder = lang==='fr' ? 'Titre de la note…' : 'Note title…';
+      titleInput.style.flex = '2';
+
+      var prioSelect = document.createElement('select');
+      [['high', lang==='fr'?'Haute':'High'],['medium',lang==='fr'?'Moyenne':'Medium'],
+       ['low',lang==='fr'?'Faible':'Low'],['resolved',lang==='fr'?'Résolu':'Resolved']
+      ].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value=o[0]; opt.textContent=o[1];
+        prioSelect.appendChild(opt);
+      });
+      prioSelect.value = 'medium';
+      prioSelect.style.flex = '1';
+
+      var zoneSelect = document.createElement('select');
+      zoneSelect.style.flex = '1';
+      var zoneOpts = [['', lang==='fr'?' -  Zone (optionnel)':' -  Zone (optional)']].concat(
+        REGIONS.map(function(r) { return [r.name, r.name]; })
+      );
+      zoneOpts.forEach(function(o) {
+        var opt = document.createElement('option'); opt.value=o[0]; opt.textContent=o[1];
+        zoneSelect.appendChild(opt);
+      });
+
+      row1.appendChild(titleInput); row1.appendChild(prioSelect); row1.appendChild(zoneSelect);
+
+      // Status select  -  only for friction + nextsteps
+      var addStatusSelect = null;
+      if(sec.id === 'friction' || sec.id === 'nextsteps' || sec.id === 'achievements') {
+        addStatusSelect = document.createElement('select');
+        addStatusSelect.style.flex = '1';
+        [['',' -  Status'],['open',lang==='fr'?'Ouvert':'Open'],['watching',lang==='fr'?'En suivi':'Watching'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
+          var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; addStatusSelect.appendChild(opt);
+        });
+        row1.appendChild(addStatusSelect);
+      }
+      form.appendChild(row1);
+
+      var bodyArea = document.createElement('textarea');
+      bodyArea.placeholder = lang==='fr' ? 'Description, contexte, action requise…' : 'Description, context, action required…';
+      form.appendChild(bodyArea);
+
+      var row2 = document.createElement('div'); row2.className = 'add-note-row';
+      var dateInput = document.createElement('input');
+      dateInput.type = 'date'; dateInput.style.flex = '1';
+      var today = new Date(); dateInput.value = today.toISOString().split('T')[0];
+
+      var submitBtn = document.createElement('button'); submitBtn.className = 'add-note-submit';
+      submitBtn.textContent = lang==='fr' ? 'Enregistrer' : 'Save';
+      var cancelBtn = document.createElement('button'); cancelBtn.className = 'add-note-cancel';
+      cancelBtn.textContent = lang==='fr' ? 'Annuler' : 'Cancel';
+
+      row2.appendChild(dateInput); row2.appendChild(submitBtn); row2.appendChild(cancelBtn);
+      form.appendChild(row2);
+
+      addToggle.addEventListener('click', function() {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        titleInput.focus();
+      });
+      cancelBtn.addEventListener('click', function() { form.style.display = 'none'; });
+
+      (function(secRef) {
+        submitBtn.addEventListener('click', function() {
+          if(!titleInput.value.trim()) return;
+          var newItem = {
+            title: titleInput.value.trim(),
+            body: bodyArea.value.trim(),
+            priority: prioSelect.value,
+            zone: zoneSelect.value,
+            date: dateInput.value
+          };
+          if(addStatusSelect) newItem.status = addStatusSelect.value;
+          secRef.items.push(newItem);
+          scheduleSave();
+          form.style.display = 'none';
+          titleInput.value = ''; bodyArea.value = '';
+          renderNotes();
+        });
+      }(sec));
+
+      sBody.appendChild(form);
+    }
+
+    sectionEl.appendChild(sBody);
+    body.appendChild(sectionEl);
+  });
+}
+
+function renderAll(){updateCards();renderGantt();renderRealGantt();renderStepsLegend();renderDetailHeader();renderDetail();renderComms();updateLockUI();}
+
+function setLang(l) {
+  lang=l;
+  document.querySelectorAll('.lang-btn').forEach(function(b){b.classList.toggle('active',b.textContent.trim()===l.toUpperCase());});
+  applyLang();initFilters();renderAll();
+}
+
+function applyLang() {
+  var ids={'h-title':'hTitle','h-sub':'hSub','h-meta':'hMeta','tab-btn-summary':'tabOverview','tab-btn-detail':'tabDetail','tab-btn-comms':'tabComms','tab-btn-workflow':'tabWorkflow','tab-btn-notes':'tabNotes','card-total-lbl':'cardTotal','card-done-lbl':'cardDone','card-prog-lbl':'cardProg','card-pend-lbl':'cardPend','gantt-title':'ganttTitle','detail-title':'detailTitle','legend-title':'legendTitle'};
+  Object.entries(ids).forEach(function(e){var el=document.getElementById(e[0]);if(el)el.textContent=t(e[1]);});
+  document.getElementById('filter-search').placeholder=t('filterSearch');
+  var hint=document.getElementById('gantt-click-hint');
+  if(hint) hint.textContent=lang==='fr'?'👆 Cliquez sur une barre du Gantt réel pour filtrer le Détail par Filiale':'👆 Click a zone in the real Gantt below to filter the Subsidiary Detail tab';
+  var clLbl=document.getElementById('clear-filters-label'); if(clLbl) clLbl.textContent=t('clearFilters');
+  updateLockUI();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(function(tb,i){tb.classList.toggle('active',['summary','detail','comms','workflow','notes'][i]===tab);});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-'+tab);});
+  var toggle=document.querySelector('.lang-toggle');
+  if(toggle) toggle.style.display=(tab==='comms'||tab==='workflow'||tab==='notes')?'none':'flex';
+  if(tab==='notes') renderNotes();
+}
+
+function initFilters() {
+  var fr=document.getElementById('filter-region'),curR=fr.value;
+  fr.innerHTML='<option value="">'+t('filterAllZones')+'</option>';
+  REGIONS.forEach(function(r){var o=document.createElement('option');o.value=r.name;o.textContent=r.name;fr.appendChild(o);}); fr.value=curR;
+  var fs=document.getElementById('filter-status'),curS=fs.value;
+  fs.innerHTML='<option value="">'+t('filterAllStatus')+'</option><option value="not-started">'+t('filterNotStarted')+'</option><option value="in-progress">'+t('filterInProgress')+'</option><option value="completed">'+t('filterCompleted')+'</option>';
+  fs.value=curS;
+}
+
+async function init(){
+  applyLang();
+  initFilters();
+
+  var loaded = false;
+
+  if(window.firebaseSubscribe) {
+    window.firebaseSubscribe(function(data) {
+      applyStateFromObj(data);
+      applyNotesFromObj(data);
+      renderAll();
+      if(!loaded) {
+        loaded = true;
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
+    });
+    // Fallback after 4s
+    setTimeout(function() {
+      if(!loaded) {
+        loaded = true;
+        try { var raw = localStorage.getItem(STORAGE_KEY); if(raw) { var d=JSON.parse(raw); applyStateFromObj(d); applyNotesFromObj(d); } } catch(e) {}
+        renderAll();
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
+    }, 4000);
+  } else {
+    await loadFromStorage();
+    renderAll();
+    document.getElementById('loading-overlay').classList.add('hidden');
+  }
+}
+init();
+</script>
+</body>
+</html>
