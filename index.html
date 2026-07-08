@@ -387,17 +387,27 @@
       </div>
     </div>
     <div id="gantt-click-hint" style="font-size:11px;color:#bbb;text-align:center;margin-top:2px;padding-bottom:2px">
-      👆 Click a zone in the real Gantt below to filter the Subsidiary Detail tab
+      👆 Click a zone in the Gantt above to filter the Subsidiary Detail tab
     </div>
 
     <!-- REAL GANTT -->
     <div class="gantt-wrap" style="margin-top:16px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
         <span style="font-size:14px;font-weight:700;color:#1F3864" id="real-gantt-title">Actual Progress — Active Subsidiaries</span>
-        <span style="font-size:11px;color:#bbb" id="real-gantt-subtitle">Only subsidiaries with at least one step completed</span>
+        <span style="font-size:11px;color:#bbb" id="real-gantt-subtitle"></span>
       </div>
       <div id="real-gantt-body" style="overflow-x:auto"></div>
     </div>
+
+    <!-- CUMULATIVE S-CURVE -->
+    <div class="gantt-wrap" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
+        <span style="font-size:14px;font-weight:700;color:#1F3864">Cumulative Steps - S-Curve</span>
+        <span style="font-size:11px;color:#bbb">15 May 2026 - target: 225 steps</span>
+      </div>
+      <div id="scurve-body"></div>
+    </div>
+
     <div id="gantt-tooltip" style="position:fixed;background:#fff;border:0.5px solid #ccc;border-radius:8px;padding:10px 14px;font-size:12px;color:#1a1a1a;pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:9999;min-width:180px;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
       <div style="font-weight:500;margin-bottom:4px;font-size:13px" id="tt-name"></div>
       <div style="color:#888;margin-bottom:6px" id="tt-detail"></div>
@@ -1146,7 +1156,20 @@ function renderGantt() {
     });
     row.addEventListener('mousemove', function(e){tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-10)+'px';});
     row.addEventListener('mouseleave', function(){tooltip.style.opacity='0';});
-    row.style.cursor='default';
+    row.style.cursor='pointer';
+    (function(regionName) {
+      row.addEventListener('click', function() {
+        var sel = document.getElementById('filter-region');
+        if(sel) sel.value = regionName;
+        document.getElementById('filter-search').value = '';
+        document.getElementById('filter-status').value = '';
+        updateClearBtn(); renderDetail();
+        document.querySelectorAll('.tab').forEach(function(tb,i){tb.classList.toggle('active',['summary','detail','comms','workflow','notes'][i]==='detail');});
+        document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-detail');});
+        var toggle=document.querySelector('.lang-toggle'); if(toggle) toggle.style.display='flex';
+        setTimeout(function(){var w=document.querySelector('.detail-wrap');if(w)w.scrollIntoView({behavior:'smooth',block:'start'});},100);
+      });
+    }(p.region));
   });
   var fl=document.getElementById('gantt-footer-left'), fr2=document.getElementById('gantt-footer-right');
   if(fl) fl.textContent=lang==='fr'?'Avril 2026':'April 2026';
@@ -1188,163 +1211,222 @@ function renderRealGantt() {
   var body = document.getElementById('real-gantt-body');
   if(!body) return;
   body.innerHTML = '';
+  var titleEl = document.getElementById('real-gantt-title');
+  if(titleEl) titleEl.textContent = lang==='fr' ? 'Progression reelle - Filiales actives' : 'Actual Progress - Active Subsidiaries';
+  var startEl = document.getElementById('real-gantt-start');
+  if(startEl) startEl.textContent = '';
 
-  var title = document.getElementById('real-gantt-title');
-  if(title) title.textContent = lang==='fr' ? 'Progression réelle - Filiales actives' : 'Actual Progress - Active Subsidiaries';
-  var sub = document.getElementById('real-gantt-subtitle');
-  if(sub) sub.textContent = lang==='fr' ? 'Uniquement les filiales avec au moins une étape complétée' : 'Only subsidiaries with at least one step completed';
-
-  // Collect all subsidiaries that have at least one step done
   var activeSubs = [];
   var allDates = [];
-
   REGIONS.forEach(function(r) {
     r.subs.forEach(function(s) {
       var key = r.name + '|' + s;
       var sm = state[key];
       if(!sm) return;
       var dates = [];
+      var doneCount = 0;
       STEPS.forEach(function(st) {
         var v = sm[st.key];
-        if(stepDone(v)) {
-          var d = stepDate(v);
-          if(d) dates.push(d);
-        }
+        if(stepDone(v)) { doneCount++; var d = stepDate(v); if(d) dates.push(d); }
       });
-      if(dates.length === 0) return; // not started
+      if(doneCount === 0 || dates.length === 0) return;
       dates.sort();
       allDates = allDates.concat(dates);
-      activeSubs.push({ region: r.name, sub: s, key: key, sm: sm, dates: dates });
+      activeSubs.push({ region: r.name, sub: s, key: key, sm: sm,
+        firstDate: dates[0], lastDate: dates[dates.length-1],
+        doneCount: doneCount, dates: dates, isCompleted: doneCount === STEPS.length });
     });
   });
 
   if(activeSubs.length === 0) {
-    body.innerHTML = '<p style="font-size:12px;color:#aaa;font-style:italic;padding:16px 0">No subsidiaries started yet.</p>';
+    body.innerHTML = '<p style="font-size:12px;color:#aaa;font-style:italic;padding:16px 0">No subsidiaries with dates assigned. Use the "Assign dates" button.</p>';
     return;
   }
 
   allDates.sort();
   var today = new Date().toISOString().split('T')[0];
   var minDate = allDates[0];
-  var maxDate = today; // always extend to today
+  var maxDate = today > allDates[allDates.length-1] ? today : allDates[allDates.length-1];
 
-  function daysBetween(a, b) {
-    return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000));
-  }
-  var totalDays = daysBetween(minDate, maxDate) + 4; // small padding
-
-  // Month header
-  var monthRow = document.createElement('div');
-  monthRow.style.cssText = 'display:flex;margin-bottom:6px;border-bottom:0.5px solid #e0e0e0;padding-bottom:4px;';
-
-  // Label column
-  var labelSpacer = document.createElement('div');
-  labelSpacer.style.cssText = 'width:160px;flex-shrink:0;';
-  monthRow.appendChild(labelSpacer);
-
-  // Generate month ticks
-  var barWrap = document.createElement('div');
-  barWrap.style.cssText = 'flex:1;position:relative;min-width:400px;';
-
-  var d = new Date(minDate);
-  d.setDate(1);
-  while(d <= new Date(maxDate)) {
-    var monthStr = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-    var pct = daysBetween(minDate, d.toISOString().split('T')[0]) / totalDays * 100;
-    var tick = document.createElement('span');
-    tick.textContent = monthStr;
-    tick.style.cssText = 'position:absolute;left:' + pct.toFixed(1) + '%;font-size:10px;color:#999;transform:translateX(-50%);white-space:nowrap;';
-    barWrap.appendChild(tick);
-    d.setMonth(d.getMonth() + 1);
-  }
-  monthRow.appendChild(barWrap);
-  body.appendChild(monthRow);
-
-  // Today line label
+  function daysBetween(a,b) { return Math.max(0, Math.round((new Date(b)-new Date(a))/86400000)); }
+  var totalDays = daysBetween(minDate, maxDate) + 14;
+  var LABEL_W = 170;
   var todayPct = (daysBetween(minDate, today) / totalDays * 100).toFixed(1);
 
-  // Sort active subs by region then name
   activeSubs.sort(function(a,b) {
-    if(a.region !== b.region) return a.region.localeCompare(b.region);
-    return a.sub.localeCompare(b.sub);
+    if(a.firstDate !== b.firstDate) return a.firstDate.localeCompare(b.firstDate);
+    return a.region.localeCompare(b.region);
   });
 
-  // Step colors
+  // Month header
+  var headerRow = document.createElement('div');
+  headerRow.style.cssText = 'display:flex;margin-bottom:8px;border-bottom:0.5px solid #e0e0e0;padding-bottom:6px;';
+  var hSpacer = document.createElement('div'); hSpacer.style.cssText = 'width:'+LABEL_W+'px;flex-shrink:0;';
+  headerRow.appendChild(hSpacer);
+  var hBar = document.createElement('div'); hBar.style.cssText = 'flex:1;position:relative;height:16px;';
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dc = new Date(minDate); dc.setDate(1);
+  while(dc <= new Date(maxDate)) {
+    var iso = dc.toISOString().split('T')[0];
+    var pct = (daysBetween(minDate, iso) / totalDays * 100).toFixed(1);
+    var tick = document.createElement('span');
+    tick.textContent = mNames[dc.getMonth()] + ' ' + (dc.getFullYear()+'').slice(2);
+    tick.style.cssText = 'position:absolute;left:'+pct+'%;font-size:10px;color:#999;transform:translateX(-50%);white-space:nowrap;';
+    hBar.appendChild(tick); dc.setMonth(dc.getMonth()+1);
+  }
+  headerRow.appendChild(hBar); body.appendChild(headerRow);
+
   var stepColors = ['#2E5FA3','#0F6E56','#F4B942','#854F0B','#534AB7'];
 
   activeSubs.forEach(function(item) {
-    var sm = item.sm;
-    var doneCount = STEPS.filter(function(st){ return stepDone(sm[st.key]); }).length;
-    var isCompleted = doneCount === STEPS.length;
-
     var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;height:34px;margin-bottom:5px;';
-
-    // Label
+    row.style.cssText = 'display:flex;align-items:center;height:30px;margin-bottom:4px;';
     var label = document.createElement('div');
-    label.style.cssText = 'width:160px;flex-shrink:0;font-size:11px;font-weight:600;color:#1F3864;padding-right:8px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-    var regionTag = document.createElement('span');
-    regionTag.style.cssText = 'font-size:9px;background:#e8eef8;color:#2E5FA3;padding:1px 5px;border-radius:3px;margin-right:4px;font-weight:700;';
-    regionTag.textContent = item.region.replace('AFR/','');
-    label.appendChild(regionTag);
-    label.appendChild(document.createTextNode(item.sub));
-    row.appendChild(label);
+    label.style.cssText = 'width:'+LABEL_W+'px;flex-shrink:0;display:flex;align-items:center;gap:5px;padding-right:8px;';
+    var rTag = document.createElement('span');
+    rTag.textContent = item.region.replace('AFR/','');
+    rTag.style.cssText = 'font-size:9px;background:#e8eef8;color:#2E5FA3;padding:1px 5px;border-radius:3px;font-weight:700;flex-shrink:0;';
+    var sName = document.createElement('span');
+    sName.textContent = item.sub;
+    sName.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    label.appendChild(rTag); label.appendChild(sName); row.appendChild(label);
 
-    // Bar area
     var area = document.createElement('div');
-    area.style.cssText = 'flex:1;position:relative;height:100%;min-width:400px;';
-
-    // Today line
+    area.style.cssText = 'flex:1;position:relative;height:100%;';
     var todayLine = document.createElement('div');
-    todayLine.style.cssText = 'position:absolute;left:' + todayPct + '%;top:0;bottom:0;width:1.5px;background:rgba(220,0,0,0.25);z-index:1;pointer-events:none;';
+    todayLine.style.cssText = 'position:absolute;left:'+todayPct+'%;top:0;bottom:0;width:1.5px;background:rgba(220,0,0,0.2);z-index:1;pointer-events:none;';
     area.appendChild(todayLine);
-
-    // Background track
     var track = document.createElement('div');
-    track.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:10px;background:#eef0f3;border-radius:99px;left:0;right:0;';
+    track.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:8px;background:#eef0f3;border-radius:99px;left:0;right:0;';
     area.appendChild(track);
 
-    // Step dots/segments
+    var barLeft = (daysBetween(minDate, item.firstDate) / totalDays * 100).toFixed(2);
+    var barWidth = (daysBetween(item.firstDate, item.lastDate) / totalDays * 100).toFixed(2);
+    if(parseFloat(barWidth) > 0) {
+      var bar = document.createElement('div');
+      bar.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:8px;border-radius:99px;left:'+barLeft+'%;width:'+barWidth+'%;background:'+(item.isCompleted?'#70AD47':'#2E5FA3')+';opacity:0.5;z-index:2;';
+      area.appendChild(bar);
+    }
     STEPS.forEach(function(st, idx) {
-      var v = sm[st.key];
+      var v = item.sm[st.key];
       if(!stepDone(v)) return;
-      var d = stepDate(v);
-      if(!d) d = minDate; // legacy true without date
-      var pct = (daysBetween(minDate, d) / totalDays * 100).toFixed(2);
+      var d = stepDate(v); if(!d) return;
+      var dp = (daysBetween(minDate, d) / totalDays * 100).toFixed(2);
       var dot = document.createElement('div');
-      dot.style.cssText = 'position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:' + (isCompleted ? '#70AD47' : stepColors[idx % stepColors.length]) + ';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);left:' + pct + '%;z-index:3;cursor:default;';
-      dot.title = (lang==='fr' ? 'Étape' : 'Step') + ' ' + st.num + ' · ' + d;
+      dot.style.cssText = 'position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:'+(item.isCompleted?'#70AD47':stepColors[idx%stepColors.length])+';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);left:'+dp+'%;z-index:3;cursor:default;';
+      dot.title = item.sub + ' - Step ' + st.num + ' - ' + d;
       area.appendChild(dot);
     });
-
-    // Connecting line between first and last step
-    if(item.dates.length > 1) {
-      var firstPct = (daysBetween(minDate, item.dates[0]) / totalDays * 100).toFixed(2);
-      var lastPct = (daysBetween(minDate, item.dates[item.dates.length-1]) / totalDays * 100).toFixed(2);
-      var line = document.createElement('div');
-      line.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);height:4px;border-radius:2px;left:' + firstPct + '%;width:' + (lastPct - firstPct).toFixed(2) + '%;background:' + (isCompleted ? '#70AD47' : '#2E5FA3') + ';opacity:0.5;z-index:2;';
-      area.appendChild(line);
-    }
-
-    row.appendChild(area);
-    body.appendChild(row);
+    row.appendChild(area); body.appendChild(row);
   });
 
-  // Today label at bottom
-  var todayLabel = document.createElement('div');
-  todayLabel.style.cssText = 'display:flex;margin-top:8px;padding-top:6px;border-top:0.5px solid #ebebeb;';
-  var todayLabelSpacer = document.createElement('div');
-  todayLabelSpacer.style.cssText = 'width:160px;flex-shrink:0;';
-  todayLabel.appendChild(todayLabelSpacer);
-  var todayLabelBar = document.createElement('div');
-  todayLabelBar.style.cssText = 'flex:1;position:relative;min-width:400px;';
+  var footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;margin-top:8px;padding-top:6px;border-top:0.5px solid #ebebeb;';
+  var fSpacer = document.createElement('div'); fSpacer.style.cssText = 'width:'+LABEL_W+'px;flex-shrink:0;';
+  footer.appendChild(fSpacer);
+  var fBar = document.createElement('div'); fBar.style.cssText = 'flex:1;position:relative;';
   var todayTxt = document.createElement('span');
-  todayTxt.textContent = (lang==='fr'?'Aujourd’hui':'Today') + ' · ' + today;
-  todayTxt.style.cssText = 'position:absolute;left:' + todayPct + '%;font-size:10px;color:rgba(200,0,0,0.6);transform:translateX(-50%);white-space:nowrap;';
-  todayLabelBar.appendChild(todayTxt);
-  todayLabel.appendChild(todayLabelBar);
-  body.appendChild(todayLabel);
+  todayTxt.textContent = 'Today - ' + today;
+  todayTxt.style.cssText = 'position:absolute;left:'+todayPct+'%;font-size:10px;color:rgba(200,0,0,0.6);transform:translateX(-50%);white-space:nowrap;';
+  fBar.appendChild(todayTxt); footer.appendChild(fBar); body.appendChild(footer);
 }
+
+function renderSCurve() {
+  var body = document.getElementById('scurve-body');
+  if(!body) return;
+  body.innerHTML = '';
+
+  var events = [];
+  var totalPossible = 0;
+  REGIONS.forEach(function(r) {
+    r.subs.forEach(function(s) {
+      var key = r.name + '|' + s;
+      var sm = state[key]; if(!sm) return;
+      STEPS.forEach(function(st) {
+        totalPossible++;
+        var v = sm[st.key];
+        if(stepDone(v)) { var d = stepDate(v); if(d) events.push({ date: d, sub: s, region: r.name, step: st.num }); }
+      });
+    });
+  });
+
+  events.sort(function(a,b){ return a.date.localeCompare(b.date); });
+  var START = '2026-05-15';
+  var today = new Date().toISOString().split('T')[0];
+  var endDate = events.length > 0 && events[events.length-1].date > today ? events[events.length-1].date : today;
+
+  var labelDates = [];
+  var cur = new Date(START); var end = new Date(endDate);
+  while(cur <= end) { labelDates.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+7); }
+  if(labelDates[labelDates.length-1] < endDate) labelDates.push(endDate);
+
+  var cumData = labelDates.map(function(ld) { return events.filter(function(e){ return e.date <= ld; }).length; });
+
+  var eventsByDate = {};
+  events.forEach(function(ev) { if(!eventsByDate[ev.date]) eventsByDate[ev.date]=[]; eventsByDate[ev.date].push(ev); });
+  var tooltipEvents = labelDates.map(function(ld) {
+    return (eventsByDate[ld]||[]).map(function(ev){ return ev.sub + ' S' + ev.step; });
+  });
+
+  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var displayLabels = labelDates.map(function(ld) { var p=ld.split('-'); return mNames[parseInt(p[1])-1]+' '+parseInt(p[2]); });
+
+  var chartDiv = document.createElement('div');
+  chartDiv.style.cssText = 'position:relative;width:100%;height:280px;';
+  var canvas = document.createElement('canvas');
+  canvas.id = 'scurve-canvas';
+  canvas.setAttribute('role','img');
+  canvas.setAttribute('aria-label','S-Curve: cumulative steps completed from May 15 2026');
+  chartDiv.appendChild(canvas); body.appendChild(chartDiv);
+
+  function draw() {
+    if(window._sCurveChart) { try { window._sCurveChart.destroy(); } catch(e){} }
+    window._sCurveChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: displayLabels,
+        datasets: [
+          { label: 'Steps completed', data: cumData, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.07)', borderWidth: 2.5,
+            pointRadius: cumData.map(function(v,i){ return i===0?0:(cumData[i]>cumData[i-1]?5:0); }),
+            pointBackgroundColor: '#2a78d6', pointBorderColor: '#fff', pointBorderWidth: 2, fill: true, tension: 0.4 },
+          { label: 'Target', data: labelDates.map(function(){ return totalPossible; }), borderColor: '#c3c2b7', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function(items) { return items[0].label; },
+              label: function(ctx) {
+                if(ctx.datasetIndex===1) return 'Target: '+totalPossible+' steps';
+                var v=ctx.parsed.y; return 'Total: '+v+' steps ('+Math.round(v/totalPossible*100)+'%)';
+              },
+              afterBody: function(items) {
+                if(items[0].datasetIndex!==0) return [];
+                var evs = tooltipEvents[items[0].dataIndex];
+                if(!evs||evs.length===0) return [];
+                var lines = ['Added this week:'];
+                evs.slice(0,8).forEach(function(e){ lines.push('  '+e); });
+                if(evs.length>8) lines.push('  ...+' + (evs.length-8) + ' more');
+                return lines;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: '#e1e0d9' }, ticks: { color: '#898781', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } },
+          y: { min: 0, max: totalPossible+5, grid: { color: '#e1e0d9' }, ticks: { color: '#898781', font: { size: 11 } } }
+        }
+      }
+    });
+  }
+  if(window.Chart) { draw(); } else {
+    var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'; s.onload=draw; document.head.appendChild(s);
+  }
+}
+
 
 function renderStepsLegend() {
   var grid=document.getElementById('steps-legend-grid'); grid.innerHTML='';
@@ -1589,10 +1671,137 @@ function renderDetail() {
       var date = stepDate(val);
       var td=document.createElement('td');
       td.className='step-check '+(isUnlocked?'editable':'locked')+(done?' done':'');
-      var titleStr = done ? ('Done' + (date?' · '+date:'') + (isUnlocked?' · click to undo':'')) : (isUnlocked?'Click to mark done':t('lockedTip'));
-      td.title = titleStr;
-      td.textContent = done?'✅':'⬜';
-      if(isUnlocked){(function(k,sk){td.addEventListener('click',function(){toggleStep(k,sk);});}(key,s.key));}
+      td.style.position='relative';
+
+      if(done && !date && isUnlocked) {
+        // Checked but no date — show calendar icon hint
+        td.title = 'Done — click to set date';
+        td.innerHTML = '✅<span style="font-size:9px;vertical-align:super;color:#F4B942;cursor:pointer">📅</span>';
+      } else {
+        var titleStr = done ? ('Done' + (date?' · '+date:'') + (isUnlocked?' · click to undo':'')) : (isUnlocked?'Click to mark done':t('lockedTip'));
+        td.title = titleStr;
+        td.textContent = done?'✅':'⬜';
+      }
+
+      if(isUnlocked) {
+        (function(k, sk, isDone, hasDate) {
+          td.addEventListener('click', function(e) {
+            // If done but no date → show inline date picker
+            if(isDone && !hasDate) {
+              // Remove any existing pickers
+              document.querySelectorAll('.inline-date-picker').forEach(function(el){ el.remove(); });
+              var picker = document.createElement('div');
+              picker.className = 'inline-date-picker';
+              picker.style.cssText = 'position:fixed;background:white;border:1px solid #c8d8f0;border-radius:8px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:9999;display:flex;flex-direction:column;gap:8px;min-width:200px;';
+              var lbl = document.createElement('div');
+              lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;';
+              lbl.textContent = 'Set date for ' + sk.toUpperCase() + ':';
+              var inp = document.createElement('input');
+              inp.type = 'date';
+              inp.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;width:100%;';
+              var today = new Date().toISOString().split('T')[0];
+              inp.value = today;
+              var btnRow = document.createElement('div');
+              btnRow.style.cssText = 'display:flex;gap:6px;';
+              var saveBtn = document.createElement('button');
+              saveBtn.textContent = 'Save';
+              saveBtn.style.cssText = 'flex:1;background:#2E5FA3;color:white;border:none;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
+              var cancelBtn = document.createElement('button');
+              cancelBtn.textContent = 'Cancel';
+              cancelBtn.style.cssText = 'flex:1;background:#f0f0f0;color:#666;border:none;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+              var uncheckBtn = document.createElement('button');
+              uncheckBtn.textContent = 'Uncheck';
+              uncheckBtn.style.cssText = 'flex:1;background:#fff0f0;color:#c00;border:1px solid #fcc;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+
+              saveBtn.onclick = function() {
+                if(inp.value) {
+                  state[k][sk] = { done: true, date: inp.value };
+                  picker.remove(); scheduleStepSave(); renderDetail();
+                }
+              };
+              cancelBtn.onclick = function() { picker.remove(); };
+              uncheckBtn.onclick = function() {
+                state[k][sk] = false; picker.remove(); scheduleStepSave(); renderAll();
+              };
+              btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn); btnRow.appendChild(uncheckBtn);
+              picker.appendChild(lbl); picker.appendChild(inp); picker.appendChild(btnRow);
+
+              // Position near click
+              var rect = td.getBoundingClientRect();
+              picker.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+              picker.style.top = (rect.bottom + 4) + 'px';
+              document.body.appendChild(picker);
+              inp.focus();
+
+              // Close on outside click
+              setTimeout(function() {
+                document.addEventListener('click', function handler(ev) {
+                  if(!picker.contains(ev.target) && ev.target !== td) {
+                    picker.remove();
+                    document.removeEventListener('click', handler);
+                  }
+                });
+              }, 50);
+              e.stopPropagation();
+
+            } else if(isDone && hasDate) {
+              // Already has date — show picker to edit or uncheck
+              document.querySelectorAll('.inline-date-picker').forEach(function(el){ el.remove(); });
+              var picker = document.createElement('div');
+              picker.className = 'inline-date-picker';
+              picker.style.cssText = 'position:fixed;background:white;border:1px solid #c8d8f0;border-radius:8px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:9999;display:flex;flex-direction:column;gap:8px;min-width:200px;';
+              var lbl = document.createElement('div');
+              lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;';
+              lbl.textContent = 'Edit date for ' + sk.toUpperCase() + ':';
+              var inp = document.createElement('input');
+              inp.type = 'date';
+              inp.value = hasDate;
+              inp.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;width:100%;';
+              var btnRow = document.createElement('div');
+              btnRow.style.cssText = 'display:flex;gap:6px;';
+              var saveBtn = document.createElement('button');
+              saveBtn.textContent = 'Save';
+              saveBtn.style.cssText = 'flex:1;background:#2E5FA3;color:white;border:none;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
+              var cancelBtn = document.createElement('button');
+              cancelBtn.textContent = 'Cancel';
+              cancelBtn.style.cssText = 'flex:1;background:#f0f0f0;color:#666;border:none;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+              var uncheckBtn = document.createElement('button');
+              uncheckBtn.textContent = 'Uncheck';
+              uncheckBtn.style.cssText = 'flex:1;background:#fff0f0;color:#c00;border:1px solid #fcc;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+
+              saveBtn.onclick = function() {
+                if(inp.value) {
+                  state[k][sk] = { done: true, date: inp.value };
+                  picker.remove(); scheduleStepSave(); renderDetail();
+                }
+              };
+              cancelBtn.onclick = function() { picker.remove(); };
+              uncheckBtn.onclick = function() {
+                state[k][sk] = false; picker.remove(); scheduleStepSave(); renderAll();
+              };
+              btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn); btnRow.appendChild(uncheckBtn);
+              picker.appendChild(lbl); picker.appendChild(inp); picker.appendChild(btnRow);
+              var rect = td.getBoundingClientRect();
+              picker.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+              picker.style.top = (rect.bottom + 4) + 'px';
+              document.body.appendChild(picker);
+              inp.focus();
+              setTimeout(function() {
+                document.addEventListener('click', function handler(ev) {
+                  if(!picker.contains(ev.target) && ev.target !== td) {
+                    picker.remove(); document.removeEventListener('click', handler);
+                  }
+                });
+              }, 50);
+              e.stopPropagation();
+
+            } else {
+              // Not done — toggle on with today's date
+              toggleStep(k, sk);
+            }
+          });
+        }(key, s.key, done, date));
+      }
       tr.appendChild(td);
     });
 
@@ -1933,7 +2142,7 @@ function renderNotes() {
   });
 }
 
-function renderAll(){updateCards();renderGantt();renderRealGantt();renderStepsLegend();renderDetailHeader();renderDetail();renderComms();updateLockUI();}
+function renderAll(){updateCards();renderGantt();renderRealGantt();renderSCurve();renderStepsLegend();renderDetailHeader();renderDetail();renderComms();updateLockUI();}
 
 function setLang(l) {
   lang=l;
@@ -1946,7 +2155,7 @@ function applyLang() {
   Object.entries(ids).forEach(function(e){var el=document.getElementById(e[0]);if(el)el.textContent=t(e[1]);});
   document.getElementById('filter-search').placeholder=t('filterSearch');
   var hint=document.getElementById('gantt-click-hint');
-  if(hint) hint.textContent=lang==='fr'?'👆 Cliquez sur une barre du Gantt réel pour filtrer le Détail par Filiale':'👆 Click a zone in the real Gantt below to filter the Subsidiary Detail tab';
+  if(hint) hint.textContent=lang==='fr'?'👆 Cliquez sur une barre du Gantt pour filtrer le Détail par Filiale':'👆 Click a zone in the Gantt above to filter the Subsidiary Detail tab';
   var clLbl=document.getElementById('clear-filters-label'); if(clLbl) clLbl.textContent=t('clearFilters');
   updateLockUI();
 }
