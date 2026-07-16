@@ -328,6 +328,7 @@
       window.firebaseReady = true;
     } catch(e) { console.warn('Firebase init failed:', e); window.firebaseReady = false; }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 </head>
 <body>
 
@@ -1336,95 +1337,225 @@ function renderSCurve() {
   if(!body) return;
   body.innerHTML = '';
 
-  var events = [];
+  var eventsByDay = {};
+  var subsByDay = {};
   var totalPossible = 0;
+
   REGIONS.forEach(function(r) {
     r.subs.forEach(function(s) {
       var key = r.name + '|' + s;
-      var sm = state[key]; if(!sm) return;
+      var sm = state[key];
+      if(!sm) return;
       STEPS.forEach(function(st) {
         totalPossible++;
         var v = sm[st.key];
-        if(stepDone(v)) { var d = stepDate(v); if(d) events.push({ date: d, sub: s, region: r.name, step: st.num }); }
+        if(stepDone(v)) {
+          var d = stepDate(v);
+          if(d) {
+            eventsByDay[d] = (eventsByDay[d] || 0) + 1;
+            if(!subsByDay[d]) subsByDay[d] = [];
+            subsByDay[d].push(s + ' - S' + st.num);
+          }
+        }
       });
     });
   });
 
-  events.sort(function(a,b){ return a.date.localeCompare(b.date); });
+  if(Object.keys(eventsByDay).length === 0) {
+    var msg = document.createElement('p');
+    msg.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:16px 0';
+    msg.textContent = lang==='fr' ? 'Aucune date assignee. Utilisez le selecteur de date sur chaque case cochee.' : 'No dated steps yet. Use the date picker on each checked step.';
+    body.appendChild(msg);
+    return;
+  }
+
   var START = '2026-05-15';
-  var today = new Date().toISOString().split('T')[0];
-  var endDate = events.length > 0 && events[events.length-1].date > today ? events[events.length-1].date : today;
+  var TOTAL_DAYS = 261;
 
-  var labelDates = [];
-  var cur = new Date(START); var end = new Date(endDate);
-  while(cur <= end) { labelDates.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+7); }
-  if(labelDates[labelDates.length-1] < endDate) labelDates.push(endDate);
+  function daysBetween(a, b) {
+    return Math.round((new Date(b) - new Date(a)) / 86400000);
+  }
 
-  var cumData = labelDates.map(function(ld) { return events.filter(function(e){ return e.date <= ld; }).length; });
+  var allDates = [START];
+  Object.keys(eventsByDay).forEach(function(d) {
+    if(allDates.indexOf(d) === -1) allDates.push(d);
+  });
+  allDates.sort();
 
-  var eventsByDate = {};
-  events.forEach(function(ev) { if(!eventsByDate[ev.date]) eventsByDate[ev.date]=[]; eventsByDate[ev.date].push(ev); });
-  var tooltipEvents = labelDates.map(function(ld) {
-    return (eventsByDate[ld]||[]).map(function(ev){ return ev.sub + ' S' + ev.step; });
+  var cum = 0;
+  var actualData = allDates.map(function(d) {
+    cum += (eventsByDay[d] || 0);
+    return cum;
   });
 
-  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var displayLabels = labelDates.map(function(ld) { var p=ld.split('-'); return mNames[parseInt(p[1])-1]+' '+parseInt(p[2]); });
+  var baselineData = allDates.map(function(d) {
+    return Math.round(daysBetween(START, d) / TOTAL_DAYS * totalPossible);
+  });
+
+  var radii = allDates.map(function(d) { return eventsByDay[d] ? 6 : 0; });
+  var ptColors = allDates.map(function(d) { return eventsByDay[d] ? '#2a78d6' : 'transparent'; });
+
+  var mFR = ['','Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
+  var mEN = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var mNames = lang === 'fr' ? mFR : mEN;
+
+  var displayLabels = allDates.map(function(d) {
+    var p = d.split('-');
+    return mNames[parseInt(p[1])] + ' ' + parseInt(p[2]);
+  });
+
+  // Progress badge - current cumulative + percentage
+  var doneTotal = 0;
+  Object.keys(eventsByDay).forEach(function(d) { doneTotal += eventsByDay[d]; });
+  var curPct = Math.round(doneTotal / totalPossible * 100);
+  var badge = document.createElement('div');
+  badge.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:12px;';
+  badge.innerHTML = '<span style="background:#E8F0FE;color:#1F3864;font-weight:700;font-size:13px;padding:4px 14px;border-radius:16px;">'
+    + doneTotal + ' / ' + totalPossible + (lang==='fr' ? ' etapes' : ' steps')
+    + '</span>'
+    + '<span style="background:#2a78d6;color:white;font-weight:700;font-size:13px;padding:4px 14px;border-radius:16px;">'
+    + curPct + '%'
+    + '</span>'
+    + '<span style="font-size:11px;color:#888;">'
+    + (lang==='fr' ? 'progression globale' : 'overall progress')
+    + '</span>';
+
+  // Subsidiary status synthesis
+  var subDone = 0, subProg = 0, subPend = 0;
+  Object.values(state).forEach(function(m) {
+    var st = getStatus(m);
+    if(st === 'completed') subDone++;
+    else if(st === 'in-progress') subProg++;
+    else subPend++;
+  });
+  badge.innerHTML += '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<span style="background:#d4edda;color:#155724;font-size:11px;font-weight:600;padding:4px 12px;border-radius:16px;">\u2705 '
+    + subDone + ' ' + (lang==='fr' ? 'completees' : 'completed') + '</span>'
+    + '<span style="background:#fff3cd;color:#856404;font-size:11px;font-weight:600;padding:4px 12px;border-radius:16px;">\ud83d\udfe1 '
+    + subProg + ' ' + (lang==='fr' ? 'en cours' : 'in progress') + '</span>'
+    + '<span style="background:#f0f0f0;color:#666;font-size:11px;font-weight:600;padding:4px 12px;border-radius:16px;">\u2b1c '
+    + subPend + ' ' + (lang==='fr' ? 'non demarrees' : 'not started') + '</span>'
+    + '</span>';
+  badge.style.flexWrap = 'wrap';
+  body.appendChild(badge);
 
   var chartDiv = document.createElement('div');
-  chartDiv.style.cssText = 'position:relative;width:100%;height:280px;';
+  chartDiv.style.cssText = 'position:relative;width:100%;height:300px;';
   var canvas = document.createElement('canvas');
-  canvas.id = 'scurve-canvas';
-  canvas.setAttribute('role','img');
-  canvas.setAttribute('aria-label','S-Curve: cumulative steps completed from May 15 2026');
-  chartDiv.appendChild(canvas); body.appendChild(chartDiv);
+  canvas.id = 'scurve-canvas-' + Date.now();
+  chartDiv.appendChild(canvas);
+  body.appendChild(chartDiv);
 
-  function draw() {
-    if(window._sCurveChart) { try { window._sCurveChart.destroy(); } catch(e){} }
-    window._sCurveChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: displayLabels,
-        datasets: [
-          { label: 'Steps completed', data: cumData, borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.07)', borderWidth: 2.5,
-            pointRadius: cumData.map(function(v,i){ return i===0?0:(cumData[i]>cumData[i-1]?5:0); }),
-            pointBackgroundColor: '#2a78d6', pointBorderColor: '#fff', pointBorderWidth: 2, fill: true, tension: 0.4 },
-          { label: 'Target', data: labelDates.map(function(){ return totalPossible; }), borderColor: '#c3c2b7', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              title: function(items) { return items[0].label; },
-              label: function(ctx) {
-                if(ctx.datasetIndex===1) return 'Target: '+totalPossible+' steps';
-                var v=ctx.parsed.y; return 'Total: '+v+' steps ('+Math.round(v/totalPossible*100)+'%)';
-              },
-              afterBody: function(items) {
-                if(items[0].datasetIndex!==0) return [];
-                var evs = tooltipEvents[items[0].dataIndex];
-                if(!evs||evs.length===0) return [];
-                var lines = ['Added this week:'];
-                evs.slice(0,8).forEach(function(e){ lines.push('  '+e); });
-                if(evs.length>8) lines.push('  ...+' + (evs.length-8) + ' more');
-                return lines;
+  var legend = document.createElement('div');
+  legend.style.cssText = 'display:flex;gap:20px;margin-top:12px;font-size:11px;color:#666;flex-wrap:wrap;';
+  legend.innerHTML = '<span><span style="display:inline-block;width:20px;height:3px;background:#2a78d6;vertical-align:middle;border-radius:2px;margin-right:5px"></span>'
+    + (lang==='fr' ? 'Progression reelle' : 'Actual progress') + '</span>'
+    + '<span><span style="display:inline-block;width:20px;height:0;border-top:2px dashed #e8a020;vertical-align:middle;margin-right:5px"></span>'
+    + (lang==='fr' ? 'Baseline theorique' : 'Theoretical baseline') + '</span>'
+    + '<span><span style="display:inline-block;width:20px;height:0;border-top:2px dashed #c3c2b7;vertical-align:middle;margin-right:5px"></span>'
+    + (lang==='fr' ? 'Objectif (' + totalPossible + ')' : 'Target (' + totalPossible + ')') + '</span>';
+  body.appendChild(legend);
+
+  if(typeof Chart === 'undefined') {
+    // Chart.js not loaded yet — retry once it is
+    var retryScript = document.createElement('script');
+    retryScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+    retryScript.onload = function() { renderSCurve(); };
+    document.head.appendChild(retryScript);
+    return;
+  }
+
+  if(window._sCurveChart) { try { window._sCurveChart.destroy(); } catch(ignore) {} }
+
+  window._sCurveChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: displayLabels,
+      datasets: [
+        {
+          label: 'Actual',
+          data: actualData,
+          borderColor: '#2a78d6',
+          backgroundColor: 'rgba(42,120,214,0.07)',
+          borderWidth: 2.5,
+          fill: true,
+          tension: 0.05,
+          pointRadius: radii,
+          pointBackgroundColor: ptColors,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverRadius: 8
+        },
+        {
+          label: 'Baseline',
+          data: baselineData,
+          borderColor: '#e8a020',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0
+        },
+        {
+          label: 'Target',
+          data: allDates.map(function() { return totalPossible; }),
+          borderColor: '#c3c2b7',
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function(items) { return allDates[items[0].dataIndex]; },
+            label: function(ctx) {
+              var v = ctx.parsed.y;
+              if(ctx.datasetIndex === 0) {
+                var added = eventsByDay[allDates[ctx.dataIndex]] || 0;
+                var pct = Math.round(v / totalPossible * 100);
+                return lang==='fr'
+                  ? 'Cumule: ' + v + ' etapes (' + pct + '%)' + (added ? ' | +' + added + ' ce jour' : '')
+                  : 'Cumulative: ' + v + ' steps (' + pct + '%)' + (added ? ' | +' + added + ' this day' : '');
               }
+              if(ctx.datasetIndex === 1) return 'Baseline: ' + v + (lang==='fr' ? ' etapes' : ' steps');
+              return (lang==='fr' ? 'Objectif: ' : 'Target: ') + totalPossible;
+            },
+            afterBody: function(items) {
+              if(items[0].datasetIndex !== 0) return [];
+              var subs = subsByDay[allDates[items[0].dataIndex]];
+              if(!subs || subs.length === 0) return [];
+              var lines = [lang==='fr' ? '- Ce jour:' : '- This day:'];
+              subs.slice(0, 8).forEach(function(s) { lines.push('  ' + s); });
+              if(subs.length > 8) lines.push('  +' + (subs.length - 8) + ' more');
+              return lines;
             }
           }
-        },
-        scales: {
-          x: { grid: { color: '#e1e0d9' }, ticks: { color: '#898781', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } },
-          y: { min: 0, max: totalPossible+5, grid: { color: '#e1e0d9' }, ticks: { color: '#898781', font: { size: 11 } } }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 10 }, maxRotation: 45 } },
+        y: { min: 0, max: totalPossible + 5, grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 11 } } },
+        y1: {
+          position: 'right',
+          min: 0,
+          max: totalPossible + 5,
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: '#2a78d6',
+            font: { size: 11, weight: 'bold' },
+            callback: function(value) { return Math.round(value / totalPossible * 100) + '%'; }
+          }
         }
       }
-    });
-  }
-  if(window.Chart) { draw(); } else {
-    var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'; s.onload=draw; document.head.appendChild(s);
-  }
+    }
+  });
 }
 
 
@@ -1460,9 +1591,9 @@ function openFilterPopup(colId, title, anchorBtn) {
   popup.appendChild(titleEl);
 
   var options = colId === 'status'
-    ? [{val:'completed',label:lang==='fr'?'Compl\u00e9t\u00e9':'Completed',icon:'\u2705'},
-       {val:'in-progress',label:lang==='fr'?'En cours':'In progress',icon:'\U0001f7e1'},
-       {val:'not-started',label:lang==='fr'?'Non d\u00e9marr\u00e9':'Not started',icon:'\u2b1c'}]
+    ? [{val:'completed',label:lang==='fr'?'Complete':'Completed',icon:'\u2705'},
+       {val:'in-progress',label:lang==='fr'?'En cours':'In progress',icon:'\ud83d\udfe1'},
+       {val:'not-started',label:lang==='fr'?'Non demarre':'Not started',icon:'\u2b1c'}]
     : [{val:'done',label:lang==='fr'?'Fait':'Done',icon:'\u2705'},
        {val:'not-done',label:lang==='fr'?'Non fait':'Not done',icon:'\u2b1c'}];
 
@@ -1489,7 +1620,7 @@ function openFilterPopup(colId, title, anchorBtn) {
     renderDetailHeader(); renderDetail(); updateColFilterClearBtn();
   });
   var resetBtn = document.createElement('button'); resetBtn.className = 'col-filter-reset';
-  resetBtn.textContent = lang === 'fr' ? 'R\u00e9initialiser' : 'Reset';
+  resetBtn.textContent = lang === 'fr' ? 'Reinitialiser' : 'Reset';
   resetBtn.addEventListener('click', function() {
     delete colFilters[colId];
     popup.classList.remove('open'); popup.remove(); activeFilterPopup = null;
@@ -1504,7 +1635,6 @@ function openFilterPopup(colId, title, anchorBtn) {
 
   setTimeout(function() {
     document.addEventListener('click', function handler(e) {
-      // Only close if click is outside the popup
       if(activeFilterPopup && !activeFilterPopup.contains(e.target)) {
         activeFilterPopup.classList.remove('open'); activeFilterPopup.remove(); activeFilterPopup = null;
         document.removeEventListener('click', handler);
@@ -1586,10 +1716,50 @@ function updateClearBtn() {
 }
 
 var dragSrcKey=null;
-// colFilters: key = column id ('s1'..'s6' or 'status'), value = array of allowed values
-// e.g. {'s1': ['done'], 'status': ['completed','in-progress']}
 var colFilters = {};
-var activeFilterPopup = null;  // currently open popup el
+var activeFilterPopup = null;
+
+function openStepDatePicker(td, k, sk, hasDate) {
+  document.querySelectorAll('.inline-date-picker').forEach(function(el){ el.remove(); });
+  var picker = document.createElement('div');
+  picker.className = 'inline-date-picker';
+  picker.style.cssText = 'position:fixed;background:white;border:1px solid #c8d8f0;border-radius:8px;padding:12px 14px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:9999;display:flex;flex-direction:column;gap:8px;min-width:210px;';
+  var lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;';
+  lbl.textContent = (hasDate ? 'Edit' : 'Set') + ' date for Step ' + sk.replace('s','') + ':';
+  var inp = document.createElement('input');
+  inp.type = 'date';
+  inp.value = hasDate || new Date().toISOString().split('T')[0];
+  inp.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;width:100%;box-sizing:border-box;';
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:6px;';
+  var saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.style.cssText = 'flex:1;background:#2E5FA3;color:white;border:none;border-radius:6px;padding:6px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
+  var cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.cssText = 'flex:1;background:#f0f0f0;color:#666;border:none;border-radius:6px;padding:6px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+  var uncheckBtn = document.createElement('button');
+  uncheckBtn.textContent = 'Uncheck';
+  uncheckBtn.style.cssText = 'flex:1;background:#fff0f0;color:#c00;border:1px solid #fcc;border-radius:6px;padding:6px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
+  saveBtn.onclick = function() {
+    if(inp.value) { state[k][sk] = { done: true, date: inp.value }; picker.remove(); scheduleStepSave(); renderAll(); }
+  };
+  cancelBtn.onclick = function() { picker.remove(); };
+  uncheckBtn.onclick = function() { state[k][sk] = false; picker.remove(); scheduleStepSave(); renderAll(); };
+  btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn); btnRow.appendChild(uncheckBtn);
+  picker.appendChild(lbl); picker.appendChild(inp); picker.appendChild(btnRow);
+  var rect = td.getBoundingClientRect();
+  picker.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+  picker.style.top = (rect.bottom + 4) + 'px';
+  document.body.appendChild(picker);
+  inp.focus();
+  setTimeout(function() {
+    document.addEventListener('click', function handler(ev) {
+      if(!picker.contains(ev.target) && ev.target !== td) { picker.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 50);
+}
 
 function renderDetail() {
   var filterRegion=document.getElementById('filter-region').value;
@@ -1598,7 +1768,6 @@ function renderDetail() {
   var mf=t('monthsFull'), tbody=document.getElementById('detail-body');
   tbody.innerHTML='';
 
-  // Build flat list for sorting
   var allRows=[];
   REGIONS.forEach(function(r) {
     if(filterRegion&&filterRegion!==r.name) return;
@@ -1608,7 +1777,6 @@ function renderDetail() {
       var key=r.name+'|'+sub, stepMap=state[key], st=getStatus(stepMap);
       if(filterStatus&&filterStatus!==st) return;
 
-      // Apply column-level filters
       var passColFilter = true;
       Object.keys(colFilters).forEach(function(colId) {
         var allowed = colFilters[colId];
@@ -1616,7 +1784,7 @@ function renderDetail() {
         if(colId === 'status') {
           if(allowed.indexOf(st) === -1) passColFilter = false;
         } else {
-          var isDone = stepMap[colId] ? 'done' : 'not-done';
+          var isDone = stepDone(stepMap[colId]) ? 'done' : 'not-done';
           if(allowed.indexOf(isDone) === -1) passColFilter = false;
         }
       });
@@ -1624,8 +1792,6 @@ function renderDetail() {
       allRows.push({r:r, sub:sub, key:key, stepMap:stepMap, st:st});
     });
   });
-
-
 
   allRows.forEach(function(item) {
     var r=item.r, sub=item.sub, key=item.key, stepMap=item.stepMap, st=item.st;
@@ -1637,209 +1803,103 @@ function renderDetail() {
     tr.dataset.key=key;
     tr.setAttribute('draggable',isUnlocked?'true':'false');
 
-    // Drag handle
     var handleTd=document.createElement('td'); handleTd.style.cssText='padding:4px 4px 4px 8px';
     var handle=document.createElement('span'); handle.className='drag-handle'+(isUnlocked?'':' locked');
-    handle.title=isUnlocked?'Drag to reorder':t('lockedTip'); handle.textContent='⣿';
+    handle.title=isUnlocked?'Drag to reorder':t('lockedTip'); handle.textContent='\u28ff';
     handleTd.appendChild(handle); tr.appendChild(handleTd);
 
-    // Zone
     var zoneTd=document.createElement('td'); zoneTd.className='left';
     zoneTd.innerHTML='<span class="region-tag">'+r.name+'</span>'; tr.appendChild(zoneTd);
 
-    // Subsidiary - link if gap analysis exists
     var subTd=document.createElement('td'); subTd.className='left'; subTd.style.fontWeight='600';
     var gapUrl=GAP_ANALYSIS_URLS[key];
     if(gapUrl) {
       var link=document.createElement('a'); link.href=gapUrl; link.target='_blank'; link.rel='noopener noreferrer';
-      link.textContent=sub; link.title=lang==='fr'?'Voir l\u2019analyse des écarts':'View gap analysis';
+      link.textContent=sub; link.title=lang==='fr'?'Voir l\u2019analyse des ecarts':'View gap analysis';
       link.style.cssText='color:#2E5FA3;text-decoration:none;border-bottom:1px dashed #2E5FA3;';
       link.addEventListener('mouseenter',function(){this.style.color='#1F3864';this.style.borderBottomStyle='solid';});
       link.addEventListener('mouseleave',function(){this.style.color='#2E5FA3';this.style.borderBottomStyle='dashed';});
       subTd.appendChild(link);
     } else { subTd.textContent=sub; }
+    if(PILOT_SUBS[key]) {
+      var pilotBadge=document.createElement('span');
+      pilotBadge.textContent='PILOT';
+      pilotBadge.style.cssText='margin-left:6px;font-size:9px;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:99px;font-weight:700;vertical-align:middle;';
+      subTd.appendChild(pilotBadge);
+    }
     tr.appendChild(subTd);
 
-    // Period
     var periodTd=document.createElement('td'); periodTd.style.cssText='color:#555;white-space:nowrap;font-size:11px';
     periodTd.textContent=period; tr.appendChild(periodTd);
 
-    // Steps
+    // Steps with date support
     STEPS.forEach(function(s) {
       var val = stepMap[s.key];
-      var done = stepDone(val);
-      var date = stepDate(val);
-      var td=document.createElement('td');
-      td.className='step-check '+(isUnlocked?'editable':'locked')+(done?' done':'');
-      td.style.position='relative';
+      var isDone = stepDone(val);
+      var d = stepDate(val);
+      var td = document.createElement('td');
+      td.className = 'step-check ' + (isUnlocked ? 'editable' : 'locked') + (isDone ? ' done' : '');
+      td.style.position = 'relative';
 
-      if(done && !date && isUnlocked) {
-        // Checked but no date — show calendar icon hint
-        td.title = 'Done — click to set date';
-        td.innerHTML = '✅<span style="font-size:9px;vertical-align:super;color:#F4B942;cursor:pointer">📅</span>';
+      if(isDone && isUnlocked) {
+        var iconColor = d ? '#70AD47' : '#F4B942';
+        var icon = d ? '\u270f' : '\ud83d\udcc5';
+        td.title = d ? ('Done - ' + d + ' - click to edit') : 'Done - click to set date';
+        td.innerHTML = '\u2705<span style="font-size:9px;vertical-align:super;color:' + iconColor + ';cursor:pointer">' + icon + '</span>';
+      } else if(isDone) {
+        td.title = d ? ('Done - ' + d) : 'Done';
+        td.textContent = '\u2705';
       } else {
-        var titleStr = done ? ('Done' + (date?' · '+date:'') + (isUnlocked?' · click to undo':'')) : (isUnlocked?'Click to mark done':t('lockedTip'));
-        td.title = titleStr;
-        td.textContent = done?'✅':'⬜';
+        td.title = isUnlocked ? 'Click to mark done' : t('lockedTip');
+        td.textContent = '\u2b1c';
       }
 
       if(isUnlocked) {
-        (function(k, sk, isDone, hasDate) {
-          td.addEventListener('click', function(e) {
-            // If done but no date → show inline date picker
-            if(isDone && !hasDate) {
-              // Remove any existing pickers
-              document.querySelectorAll('.inline-date-picker').forEach(function(el){ el.remove(); });
-              var picker = document.createElement('div');
-              picker.className = 'inline-date-picker';
-              picker.style.cssText = 'position:fixed;background:white;border:1px solid #c8d8f0;border-radius:8px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:9999;display:flex;flex-direction:column;gap:8px;min-width:200px;';
-              var lbl = document.createElement('div');
-              lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;';
-              lbl.textContent = 'Set date for ' + sk.toUpperCase() + ':';
-              var inp = document.createElement('input');
-              inp.type = 'date';
-              inp.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;width:100%;';
-              var today = new Date().toISOString().split('T')[0];
-              inp.value = today;
-              var btnRow = document.createElement('div');
-              btnRow.style.cssText = 'display:flex;gap:6px;';
-              var saveBtn = document.createElement('button');
-              saveBtn.textContent = 'Save';
-              saveBtn.style.cssText = 'flex:1;background:#2E5FA3;color:white;border:none;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
-              var cancelBtn = document.createElement('button');
-              cancelBtn.textContent = 'Cancel';
-              cancelBtn.style.cssText = 'flex:1;background:#f0f0f0;color:#666;border:none;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
-              var uncheckBtn = document.createElement('button');
-              uncheckBtn.textContent = 'Uncheck';
-              uncheckBtn.style.cssText = 'flex:1;background:#fff0f0;color:#c00;border:1px solid #fcc;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
-
-              saveBtn.onclick = function() {
-                if(inp.value) {
-                  state[k][sk] = { done: true, date: inp.value };
-                  picker.remove(); scheduleStepSave(); renderDetail();
-                }
-              };
-              cancelBtn.onclick = function() { picker.remove(); };
-              uncheckBtn.onclick = function() {
-                state[k][sk] = false; picker.remove(); scheduleStepSave(); renderAll();
-              };
-              btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn); btnRow.appendChild(uncheckBtn);
-              picker.appendChild(lbl); picker.appendChild(inp); picker.appendChild(btnRow);
-
-              // Position near click
-              var rect = td.getBoundingClientRect();
-              picker.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
-              picker.style.top = (rect.bottom + 4) + 'px';
-              document.body.appendChild(picker);
-              inp.focus();
-
-              // Close on outside click
-              setTimeout(function() {
-                document.addEventListener('click', function handler(ev) {
-                  if(!picker.contains(ev.target) && ev.target !== td) {
-                    picker.remove();
-                    document.removeEventListener('click', handler);
-                  }
-                });
-              }, 50);
+        (function(k, sk, done2, date2, tdRef) {
+          tdRef.addEventListener('click', function(e) {
+            if(done2) {
+              openStepDatePicker(tdRef, k, sk, date2);
               e.stopPropagation();
-
-            } else if(isDone && hasDate) {
-              // Already has date — show picker to edit or uncheck
-              document.querySelectorAll('.inline-date-picker').forEach(function(el){ el.remove(); });
-              var picker = document.createElement('div');
-              picker.className = 'inline-date-picker';
-              picker.style.cssText = 'position:fixed;background:white;border:1px solid #c8d8f0;border-radius:8px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:9999;display:flex;flex-direction:column;gap:8px;min-width:200px;';
-              var lbl = document.createElement('div');
-              lbl.style.cssText = 'font-size:11px;font-weight:600;color:#1F3864;';
-              lbl.textContent = 'Edit date for ' + sk.toUpperCase() + ':';
-              var inp = document.createElement('input');
-              inp.type = 'date';
-              inp.value = hasDate;
-              inp.style.cssText = 'border:1px solid #dde6f5;border-radius:6px;padding:5px 8px;font-size:12px;font-family:Arial,sans-serif;width:100%;';
-              var btnRow = document.createElement('div');
-              btnRow.style.cssText = 'display:flex;gap:6px;';
-              var saveBtn = document.createElement('button');
-              saveBtn.textContent = 'Save';
-              saveBtn.style.cssText = 'flex:1;background:#2E5FA3;color:white;border:none;border-radius:6px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;';
-              var cancelBtn = document.createElement('button');
-              cancelBtn.textContent = 'Cancel';
-              cancelBtn.style.cssText = 'flex:1;background:#f0f0f0;color:#666;border:none;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
-              var uncheckBtn = document.createElement('button');
-              uncheckBtn.textContent = 'Uncheck';
-              uncheckBtn.style.cssText = 'flex:1;background:#fff0f0;color:#c00;border:1px solid #fcc;border-radius:6px;padding:5px 0;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;';
-
-              saveBtn.onclick = function() {
-                if(inp.value) {
-                  state[k][sk] = { done: true, date: inp.value };
-                  picker.remove(); scheduleStepSave(); renderDetail();
-                }
-              };
-              cancelBtn.onclick = function() { picker.remove(); };
-              uncheckBtn.onclick = function() {
-                state[k][sk] = false; picker.remove(); scheduleStepSave(); renderAll();
-              };
-              btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn); btnRow.appendChild(uncheckBtn);
-              picker.appendChild(lbl); picker.appendChild(inp); picker.appendChild(btnRow);
-              var rect = td.getBoundingClientRect();
-              picker.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
-              picker.style.top = (rect.bottom + 4) + 'px';
-              document.body.appendChild(picker);
-              inp.focus();
-              setTimeout(function() {
-                document.addEventListener('click', function handler(ev) {
-                  if(!picker.contains(ev.target) && ev.target !== td) {
-                    picker.remove(); document.removeEventListener('click', handler);
-                  }
-                });
-              }, 50);
-              e.stopPropagation();
-
             } else {
-              // Not done — toggle on with today's date
               toggleStep(k, sk);
             }
           });
-        }(key, s.key, done, date));
+        }(key, s.key, isDone, d, td));
       }
       tr.appendChild(td);
     });
 
-    // Progress
     var progTd=document.createElement('td');
     progTd.innerHTML='<div style="display:flex;align-items:center;gap:8px;justify-content:center"><div class="prog-wrap"><div class="prog-bar" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:#555">'+pct+'%</span></div>';
     tr.appendChild(progTd);
 
-    // Status
     var statusTd=document.createElement('td'); statusTd.innerHTML=statusBadge(st); tr.appendChild(statusTd);
 
-    // Notes
     var noteTd=document.createElement('td'); noteTd.style.cssText='white-space:nowrap;';
     var existingComment=comments[key]||'';
     var noteBtn=document.createElement('button');
     noteBtn.className='comment-btn'+(existingComment?' has-comment':'');
-    noteBtn.textContent=existingComment?('💬 '+existingComment.slice(0,22)+(existingComment.length>22?'…':'')):t('addNote');
+    noteBtn.textContent=existingComment?('\ud83d\udcac '+existingComment.slice(0,22)+(existingComment.length>22?'\u2026':'')):t('addNote');
     noteBtn.title=existingComment||(lang==='fr'?'Ajouter une note':'Add a note');
     noteTd.appendChild(noteBtn); tr.appendChild(noteTd);
 
-    // Note expansion row
     var noteRow=document.createElement('tr'); noteRow.className='comment-row'; noteRow.style.display='none';
     var noteRowTd=document.createElement('td'); noteRowTd.colSpan=11+STEPS.length;
     var noteBox=document.createElement('div'); noteBox.className='comment-box';
     if(isUnlocked) {
       var ta=document.createElement('textarea'); ta.className='comment-textarea';
       ta.placeholder=t('notePlaceholder'); ta.value=existingComment;
-      var saveBtn=document.createElement('button'); saveBtn.className='comment-save-btn'; saveBtn.textContent=t('saveNote');
-      (function(k,btn,textarea,nb){
-        saveBtn.addEventListener('click',function(){
+      var saveBtn2=document.createElement('button'); saveBtn2.className='comment-save-btn'; saveBtn2.textContent=t('saveNote');
+      (function(k,btn,textarea,nb,nr2){
+        btn.addEventListener('click',function(){
           comments[k]=textarea.value.trim(); scheduleSave();
-          nb.textContent=comments[k]?('💬 '+comments[k].slice(0,22)+(comments[k].length>22?'…':'')):t('addNote');
+          nb.textContent=comments[k]?('\ud83d\udcac '+comments[k].slice(0,22)+(comments[k].length>22?'\u2026':'')):t('addNote');
           nb.className='comment-btn'+(comments[k]?' has-comment':'');
           nb.title=comments[k]||(lang==='fr'?'Ajouter une note':'Add a note');
-          noteRow.style.display='none';
+          nr2.style.display='none';
         });
-      }(key,saveBtn,ta,noteBtn));
-      noteBox.appendChild(ta); noteBox.appendChild(saveBtn);
+      }(key,saveBtn2,ta,noteBtn,noteRow));
+      noteBox.appendChild(ta); noteBox.appendChild(saveBtn2);
     } else {
       var preview=document.createElement('div'); preview.style.cssText='font-size:12px;color:#555;font-style:italic;padding:4px 0';
       preview.textContent=existingComment||t('noNote'); noteBox.appendChild(preview);
@@ -1851,7 +1911,6 @@ function renderDetail() {
     tbody.appendChild(noteRow);
   });
 
-  // Drag handlers (only on data rows, skip comment rows)
   var dragOverRow=null;
   tbody.querySelectorAll('tr[data-key]').forEach(function(row) {
     row.addEventListener('dragstart',function(e){dragSrcKey=row.dataset.key;row.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
@@ -1871,11 +1930,10 @@ function renderDetail() {
   });
 }
 
-function toggleStep(key,stepKey){
+function toggleStep(key, stepKey) {
   if(!isUnlocked) return;
   var cur = state[key][stepKey];
-  // cur can be false, true (legacy), or {done, date}
-  var isDone = cur === true || (cur && cur.done);
+  var isDone = stepDone(cur);
   if(isDone) {
     state[key][stepKey] = false;
   } else {
@@ -1891,34 +1949,26 @@ function renderNotes() {
   if(!body) return;
   body.innerHTML = '';
 
-  var hint = document.getElementById('notes-lock-hint');
-  if(hint) hint.textContent = isUnlocked
-    ? (lang==='fr' ? 'Mode édition actif' : 'Editing active')
-    : (lang==='fr' ? 'Déverrouiller pour ajouter des notes' : 'Unlock editing to add notes');
-
   notesData.sections.forEach(function(sec) {
     var sectionEl = document.createElement('div');
     sectionEl.className = 'notes-section';
 
-    // Header
     var header = document.createElement('div');
     header.className = 'notes-section-header';
     var h3 = document.createElement('h3');
     h3.textContent = lang==='en' ? sec.titleEN : sec.titleFR;
     var toggle = document.createElement('span');
     toggle.className = 'section-toggle';
-    toggle.textContent = sec.collapsed ? '▶ ' + sec.items.length + ' notes' : '▼';
+    toggle.textContent = sec.collapsed ? '\u25b6 ' + sec.items.length + ' notes' : '\u25bc';
     header.appendChild(h3); header.appendChild(toggle);
     header.addEventListener('click', function() {
       sec.collapsed = !sec.collapsed; scheduleSave(); renderNotes();
     });
     sectionEl.appendChild(header);
 
-    // Body
     var sBody = document.createElement('div');
     sBody.className = 'notes-section-body' + (sec.collapsed ? ' collapsed' : '');
 
-    // Existing notes
     if(sec.items.length === 0 && !isUnlocked) {
       var empty = document.createElement('p');
       empty.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:8px 0';
@@ -1941,19 +1991,9 @@ function renderNotes() {
 
       var prioEl = document.createElement('span');
       prioEl.className = 'note-priority ' + (item.priority || 'medium');
-      var prioLabels = { high: lang==='fr'?'Haute':'High', medium: lang==='fr'?'Moyenne':'Medium', low: lang==='fr'?'Faible':'Low', resolved: lang==='fr'?'Résolu':'Resolved' };
+      var prioLabels = { high: lang==='fr'?'Haute':'High', medium: lang==='fr'?'Moyenne':'Medium', low: lang==='fr'?'Faible':'Low', resolved: lang==='fr'?'Resolu':'Resolved' };
       prioEl.textContent = prioLabels[item.priority] || item.priority;
       noteHeader.appendChild(prioEl);
-
-      // Status badge  -  only for friction + nextsteps sections
-      var hasStatus = (sec.id === 'friction' || sec.id === 'nextsteps' || sec.id === 'achievements');
-      if(hasStatus && item.status) {
-        var statusEl = document.createElement('span');
-        statusEl.className = 'note-status ' + item.status;
-        var statusLabels = { open: lang==='fr'?'Ouvert':'Open', watching: lang==='fr'?'En suivi':'Watching', resolved: lang==='fr'?'Résolu':'Resolved' };
-        statusEl.textContent = statusLabels[item.status] || item.status;
-        noteHeader.appendChild(statusEl);
-      }
 
       var titleEl = document.createElement('span');
       titleEl.className = 'note-title'; titleEl.textContent = item.title || '';
@@ -1974,74 +2014,18 @@ function renderNotes() {
       }
 
       if(isUnlocked) {
-        // Edit button
-        var editBtn = document.createElement('button');
-        editBtn.className = 'note-edit-btn'; editBtn.textContent = '✎';
-        editBtn.title = lang==='fr' ? 'Modifier' : 'Edit';
-
-        // Inline edit form
-        var editForm = document.createElement('div');
-        editForm.className = 'note-edit-form';
-
-        var editRow1 = document.createElement('div'); editRow1.style.cssText = 'display:flex;gap:6px;';
-        var editTitle = document.createElement('input'); editTitle.value = item.title || ''; editTitle.placeholder = lang==='fr'?'Titre':'Title'; editTitle.style.flex='2';
-        var editPrio = document.createElement('select'); editPrio.style.flex='1';
-        [['high',lang==='fr'?'Haute':'High'],['medium',lang==='fr'?'Moyenne':'Medium'],['low',lang==='fr'?'Faible':'Low'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
-          var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; if(o[0]===item.priority) opt.selected=true; editPrio.appendChild(opt);
-        });
-        editRow1.appendChild(editTitle); editRow1.appendChild(editPrio);
-
-        if(hasStatus) {
-          var editStatus = document.createElement('select'); editStatus.style.flex='1';
-          [['',' -  Status'],['open',lang==='fr'?'Ouvert':'Open'],['watching',lang==='fr'?'En suivi':'Watching'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
-            var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; if(o[0]===(item.status||'')) opt.selected=true; editStatus.appendChild(opt);
-          });
-          editRow1.appendChild(editStatus);
-        }
-        editForm.appendChild(editRow1);
-
-        var editBody = document.createElement('textarea'); editBody.value = item.body || ''; editBody.placeholder = lang==='fr'?'Description…':'Description…';
-        editForm.appendChild(editBody);
-
-        var editRow2 = document.createElement('div'); editRow2.style.cssText='display:flex;gap:6px;align-items:center;';
-        var editDate = document.createElement('input'); editDate.type='date'; editDate.value=item.date||''; editDate.style.flex='1';
-        var editSave = document.createElement('button'); editSave.className='note-edit-save'; editSave.textContent=lang==='fr'?'Enregistrer':'Save';
-        var editCancel = document.createElement('button'); editCancel.className='note-edit-cancel'; editCancel.textContent=lang==='fr'?'Annuler':'Cancel';
-        editRow2.appendChild(editDate); editRow2.appendChild(editSave); editRow2.appendChild(editCancel);
-        editForm.appendChild(editRow2);
-
-        (function(itm, ef, eb, ep, et, ed, es_el, hasS) {
-          editBtn.addEventListener('click', function() {
-            ef.style.display = ef.style.display === 'none' ? 'block' : 'none';
-          });
-          editCancel.addEventListener('click', function() { ef.style.display = 'none'; });
-          editSave.addEventListener('click', function() {
-            itm.title = et.value.trim();
-            itm.body = eb.value.trim();
-            itm.priority = ep.value;
-            itm.date = ed.value;
-            if(hasS && es_el) itm.status = es_el.value;
-            scheduleSave(); renderNotes();
-          });
-        }(item, editForm, editBody, editPrio, editTitle, editDate, hasStatus ? editForm.querySelector('select:last-of-type') : null, hasStatus));
-
-        noteEl.appendChild(editForm);
-
-        // Delete button
         var delBtn = document.createElement('button');
-        delBtn.className = 'note-delete-btn'; delBtn.textContent = '✕';
+        delBtn.className = 'note-delete-btn'; delBtn.textContent = '\u2715';
         delBtn.title = lang==='fr' ? 'Supprimer' : 'Delete';
         (function(secRef, i){ delBtn.addEventListener('click', function() {
           secRef.items.splice(i, 1); scheduleSave(); renderNotes();
         }); }(sec, idx));
         noteEl.appendChild(delBtn);
-        noteEl.appendChild(editBtn);
       }
 
       sBody.appendChild(noteEl);
     });
 
-    // Add note form (unlocked only)
     if(isUnlocked) {
       var addToggle = document.createElement('button');
       addToggle.className = 'add-note-toggle';
@@ -2053,14 +2037,13 @@ function renderNotes() {
       form.style.display = 'none';
 
       var row1 = document.createElement('div'); row1.className = 'add-note-row';
-
       var titleInput = document.createElement('input');
-      titleInput.placeholder = lang==='fr' ? 'Titre de la note…' : 'Note title…';
+      titleInput.placeholder = lang==='fr' ? 'Titre de la note...' : 'Note title...';
       titleInput.style.flex = '2';
 
       var prioSelect = document.createElement('select');
       [['high', lang==='fr'?'Haute':'High'],['medium',lang==='fr'?'Moyenne':'Medium'],
-       ['low',lang==='fr'?'Faible':'Low'],['resolved',lang==='fr'?'Résolu':'Resolved']
+       ['low',lang==='fr'?'Faible':'Low'],['resolved',lang==='fr'?'Resolu':'Resolved']
       ].forEach(function(o) {
         var opt = document.createElement('option'); opt.value=o[0]; opt.textContent=o[1];
         prioSelect.appendChild(opt);
@@ -2070,7 +2053,7 @@ function renderNotes() {
 
       var zoneSelect = document.createElement('select');
       zoneSelect.style.flex = '1';
-      var zoneOpts = [['', lang==='fr'?' -  Zone (optionnel)':' -  Zone (optional)']].concat(
+      var zoneOpts = [['', lang==='fr'?'- Zone (optionnel)':'- Zone (optional)']].concat(
         REGIONS.map(function(r) { return [r.name, r.name]; })
       );
       zoneOpts.forEach(function(o) {
@@ -2079,27 +2062,16 @@ function renderNotes() {
       });
 
       row1.appendChild(titleInput); row1.appendChild(prioSelect); row1.appendChild(zoneSelect);
-
-      // Status select  -  only for friction + nextsteps
-      var addStatusSelect = null;
-      if(sec.id === 'friction' || sec.id === 'nextsteps' || sec.id === 'achievements') {
-        addStatusSelect = document.createElement('select');
-        addStatusSelect.style.flex = '1';
-        [['',' -  Status'],['open',lang==='fr'?'Ouvert':'Open'],['watching',lang==='fr'?'En suivi':'Watching'],['resolved',lang==='fr'?'Résolu':'Resolved']].forEach(function(o){
-          var opt=document.createElement('option'); opt.value=o[0]; opt.textContent=o[1]; addStatusSelect.appendChild(opt);
-        });
-        row1.appendChild(addStatusSelect);
-      }
       form.appendChild(row1);
 
       var bodyArea = document.createElement('textarea');
-      bodyArea.placeholder = lang==='fr' ? 'Description, contexte, action requise…' : 'Description, context, action required…';
+      bodyArea.placeholder = lang==='fr' ? 'Description, contexte, action requise...' : 'Description, context, action required...';
       form.appendChild(bodyArea);
 
       var row2 = document.createElement('div'); row2.className = 'add-note-row';
       var dateInput = document.createElement('input');
       dateInput.type = 'date'; dateInput.style.flex = '1';
-      var today = new Date(); dateInput.value = today.toISOString().split('T')[0];
+      dateInput.value = new Date().toISOString().split('T')[0];
 
       var submitBtn = document.createElement('button'); submitBtn.className = 'add-note-submit';
       submitBtn.textContent = lang==='fr' ? 'Enregistrer' : 'Save';
@@ -2118,15 +2090,13 @@ function renderNotes() {
       (function(secRef) {
         submitBtn.addEventListener('click', function() {
           if(!titleInput.value.trim()) return;
-          var newItem = {
+          secRef.items.push({
             title: titleInput.value.trim(),
             body: bodyArea.value.trim(),
             priority: prioSelect.value,
             zone: zoneSelect.value,
             date: dateInput.value
-          };
-          if(addStatusSelect) newItem.status = addStatusSelect.value;
-          secRef.items.push(newItem);
+          });
           scheduleSave();
           form.style.display = 'none';
           titleInput.value = ''; bodyArea.value = '';
@@ -2142,7 +2112,12 @@ function renderNotes() {
   });
 }
 
-function renderAll(){updateCards();renderGantt();renderRealGantt();renderSCurve();renderStepsLegend();renderDetailHeader();renderDetail();renderComms();updateLockUI();}
+function renderAll(){
+  var fns = [updateCards, renderGantt, renderRealGantt, renderSCurve, renderStepsLegend, renderDetailHeader, renderDetail, renderComms, updateLockUI];
+  fns.forEach(function(fn) {
+    try { fn(); } catch(e) { console.warn('Render error in ' + (fn.name || 'fn') + ':', e); }
+  });
+}
 
 function setLang(l) {
   lang=l;
