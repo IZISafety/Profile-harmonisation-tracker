@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -60,6 +59,8 @@
   .card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
   .card .value { font-size: 28px; font-weight: 700; color: #1F3864; margin-top: 4px; }
   .card.green { border-left-color: #70AD47; } .card.green .value { color: #4a7a2e; }
+  .card-clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+  .card-clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
   .card.orange { border-left-color: #F4B942; } .card.orange .value { color: #c8912a; }
 
   .gantt-wrap { background: white; border-radius: 8px; padding: 24px 28px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 24px; }
@@ -369,10 +370,10 @@
 
   <div class="tab-panel active" id="tab-summary">
     <div class="cards">
-      <div class="card"><div class="label" id="card-total-lbl">Total Subsidiaries</div><div class="value">45</div></div>
-      <div class="card green"><div class="label" id="card-done-lbl">Completed</div><div class="value" id="cnt-done">0</div></div>
-      <div class="card orange"><div class="label" id="card-prog-lbl">In Progress</div><div class="value" id="cnt-progress">0</div></div>
-      <div class="card"><div class="label" id="card-pend-lbl">Not Started</div><div class="value" id="cnt-pending">45</div></div>
+      <div class="card card-clickable" onclick="filterByStatus('')"><div class="label" id="card-total-lbl">Total Subsidiaries</div><div class="value">45</div></div>
+      <div class="card green card-clickable" onclick="filterByStatus('completed')"><div class="label" id="card-done-lbl">Completed</div><div class="value" id="cnt-done">0</div></div>
+      <div class="card orange card-clickable" onclick="filterByStatus('in-progress')"><div class="label" id="card-prog-lbl">In Progress</div><div class="value" id="cnt-progress">0</div></div>
+      <div class="card card-clickable" onclick="filterByStatus('not-started')"><div class="label" id="card-pend-lbl">Not Started</div><div class="value" id="cnt-pending">45</div></div>
     </div>
     <div class="gantt-wrap">
       <div class="header" style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px">
@@ -2147,6 +2148,18 @@ function renderAll(){
   fns.forEach(function(fn) {
     try { fn(); } catch(e) { console.warn('Render error in ' + (fn.name || 'fn') + ':', e); }
   });
+}
+
+function filterByStatus(status) {
+  var fs = document.getElementById('filter-status');
+  if(fs) fs.value = status;
+  document.getElementById('filter-region').value = '';
+  document.getElementById('filter-search').value = '';
+  updateClearBtn(); renderDetail();
+  document.querySelectorAll('.tab').forEach(function(tb,i){tb.classList.toggle('active',['summary','detail','comms','workflow','notes'][i]==='detail');});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.toggle('active',p.id==='tab-detail');});
+  var toggle=document.querySelector('.lang-toggle'); if(toggle) toggle.style.display='flex';
+  setTimeout(function(){var w=document.querySelector('.detail-wrap');if(w)w.scrollIntoView({behavior:'smooth',block:'start'});},100);
 }
 
 function setLang(l) {
