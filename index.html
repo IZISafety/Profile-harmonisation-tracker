@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -348,7 +349,7 @@
       <span id="lock-label">View only</span>
       <span class="lock-tip" id="lock-tip">Press Ctrl+Shift+A to unlock editing</span>
     </div>
-    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">44 subsidiaries · 8 zones · 9 months</div>
+    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">45 subsidiaries · 8 zones · 9 months</div>
     <div class="lang-toggle">
       <button class="lang-btn" onclick="setLang('fr')">FR</button>
       <button class="lang-btn active" onclick="setLang('en')">EN</button>
@@ -375,7 +376,7 @@
     </div>
     <div class="gantt-wrap">
       <div class="header" style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px">
-        <span style="font-size:14px;font-weight:700;color:#1F3864" id="gantt-title">provisional schedule - Gantt View by Zone</span>
+        <span style="font-size:14px;font-weight:700;color:#1F3864" id="gantt-title">Provisional Schedule - Gantt View by Zone</span>
         <span style="font-size:12px;color:#888">28/04/2026  -  31/01/2027</span>
       </div>
       <div class="chart" id="gantt-chart">
@@ -802,10 +803,10 @@ function copyTemplate(type, l) {
 
 const T = {
   en: {
-    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'44 subsidiaries · 8 zones · 9 months',
+    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'45 subsidiaries · 8 zones · 9 months',
     tabOverview:'Overview', tabDetail:'Subsidiary Detail', tabComms:'Communications', tabWorkflow:'Workflow', tabNotes:'Friction Points',
     cardTotal:'Total Subsidiaries', cardDone:'Completed', cardProg:'In Progress', cardPend:'Not Started',
-    ganttTitle:'Previsional Schedule - Gantt View by Zone', ganttForecast:'Forecast only', ganttHint:'\ud83d\udc46 Click a zone in the Gantt above to filter the Subsidiary Detail tab', scurveTitle:'Cumulative Steps - S-Curve', scurveSub:'15 May 2026 - target: {N} steps', rgToday:'Today', rgEmpty:'No subsidiaries with dates assigned. Use the "Assign dates" button.',
+    ganttTitle:'Provisional Schedule - Gantt View by Zone', ganttForecast:'Forecast only', ganttHint:'\ud83d\udc46 Click a zone in the Gantt above to filter the Subsidiary Detail tab', scurveTitle:'Cumulative Steps - S-Curve', scurveSub:'15 May 2026 - target: {N} steps', rgToday:'Today', rgEmpty:'No subsidiaries with dates assigned. Use the "Assign dates" button.',
     months:['Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.','Jan.'],
     monthsFull:['April','May','June','July','August','September','October','November','December','January 2027'],
     detailTitle:'Detailed Tracking by Subsidiary', legendTitle:'Tracked Steps',
@@ -821,10 +822,10 @@ const T = {
     notePlaceholder:'Add a note about this subsidiary…'
   },
   fr: {
-    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'44 filiales · 8 zones · 9 mois',
+    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'45 filiales · 8 zones · 9 mois',
     tabOverview:'Vue Générale', tabDetail:'Détail par Filiale', tabComms:'Communications', tabWorkflow:'Flux', tabNotes:'Friction Points',
     cardTotal:'Total Filiales', cardDone:'Complétées', cardProg:'En cours', cardPend:'Non démarrées',
-    ganttTitle:'planning prévisionnel - Vue Gantt par Zone', ganttForecast:'Prévisionnel uniquement', ganttHint:'\ud83d\udc46 Cliquez sur une zone du Gantt ci-dessus pour filtrer l\u2019onglet Suivi par filiale', scurveTitle:'Étapes cumulées - Courbe en S', scurveSub:'15 mai 2026 - objectif : {N} étapes', rgToday:'Aujourd\u2019hui', rgEmpty:'Aucune filiale avec dates assignées. Utilisez le bouton "Assigner des dates".',
+    ganttTitle:'Planning Prévisionnel - Vue Gantt par Zone', ganttForecast:'Prévisionnel uniquement', ganttHint:'\ud83d\udc46 Cliquez sur une zone du Gantt ci-dessus pour filtrer l\u2019onglet Suivi par filiale', scurveTitle:'Étapes cumulées - Courbe en S', scurveSub:'15 mai 2026 - objectif : {N} étapes', rgToday:'Aujourd\u2019hui', rgEmpty:'Aucune filiale avec dates assignées. Utilisez le bouton "Assigner des dates".',
     months:['Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.','Jan.'],
     monthsFull:['Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre','Janvier 2027'],
     detailTitle:'Suivi Détaillé par Filiale', legendTitle:'Étapes suivies',
@@ -1118,10 +1119,7 @@ function updateCards() {
 }
 function getSubStatus(rn, sn) { var k=rn+'|'+sn; return !state[k]?'not-started':getStatus(state[k]); }
 function getRegionBarColor(rn, subs) {
-  var st=subs.map(function(s){return getSubStatus(rn,s);}), done=st.filter(function(s){return s==='completed';}).length, ip=st.filter(function(s){return s==='in-progress';}).length, tot=subs.length;
-  if(done===tot) return '#70AD47';
-  if(done>0&&ip===0) return 'color-mix(in srgb, #70AD47 '+Math.round(done/tot*100)+'%, #939DA8)';
-  if(ip>0) return '#F4B942';
+  // Provisional schedule: all bars stay grey regardless of deployment status
   return '#939DA8';
 }
 
