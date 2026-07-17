@@ -348,7 +348,7 @@
       <span id="lock-label">View only</span>
       <span class="lock-tip" id="lock-tip">Press Ctrl+Shift+A to unlock editing</span>
     </div>
-    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">45 subsidiaries · 8 zones · 9 months</div>
+    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">44 subsidiaries · 8 zones · 9 months</div>
     <div class="lang-toggle">
       <button class="lang-btn" onclick="setLang('fr')">FR</button>
       <button class="lang-btn active" onclick="setLang('en')">EN</button>
@@ -403,8 +403,8 @@
     <!-- CUMULATIVE S-CURVE -->
     <div class="gantt-wrap" style="margin-top:16px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">
-        <span style="font-size:14px;font-weight:700;color:#1F3864">Cumulative Steps - S-Curve</span>
-        <span style="font-size:11px;color:#bbb">15 May 2026 - target: 225 steps</span>
+        <span style="font-size:14px;font-weight:700;color:#1F3864" id="scurve-title">Cumulative Steps - S-Curve</span>
+        <span style="font-size:11px;color:#bbb" id="scurve-subtitle">15 May 2026 - target: 220 steps</span>
       </div>
       <div id="scurve-body"></div>
     </div>
@@ -802,10 +802,10 @@ function copyTemplate(type, l) {
 
 const T = {
   en: {
-    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'45 subsidiaries · 8 zones · 9 months',
+    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'44 subsidiaries · 8 zones · 9 months',
     tabOverview:'Overview', tabDetail:'Subsidiary Detail', tabComms:'Communications', tabWorkflow:'Workflow', tabNotes:'Friction Points',
     cardTotal:'Total Subsidiaries', cardDone:'Completed', cardProg:'In Progress', cardPend:'Not Started',
-    ganttTitle:'General Schedule - Gantt View by Zone',
+    ganttTitle:'General Schedule - Gantt View by Zone', ganttForecast:'Forecast only', ganttHint:'\ud83d\udc46 Click a zone in the Gantt above to filter the Subsidiary Detail tab', scurveTitle:'Cumulative Steps - S-Curve', scurveSub:'15 May 2026 - target: {N} steps', rgToday:'Today', rgEmpty:'No subsidiaries with dates assigned. Use the "Assign dates" button.',
     months:['Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.','Jan.'],
     monthsFull:['April','May','June','July','August','September','October','November','December','January 2027'],
     detailTitle:'Detailed Tracking by Subsidiary', legendTitle:'Tracked Steps',
@@ -821,10 +821,10 @@ const T = {
     notePlaceholder:'Add a note about this subsidiary…'
   },
   fr: {
-    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'45 filiales · 8 zones · 9 mois',
+    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'44 filiales · 8 zones · 9 mois',
     tabOverview:'Vue Générale', tabDetail:'Détail par Filiale', tabComms:'Communications', tabWorkflow:'Flux', tabNotes:'Friction Points',
     cardTotal:'Total Filiales', cardDone:'Complétées', cardProg:'En cours', cardPend:'Non démarrées',
-    ganttTitle:'Planning Général - Vue Gantt par Zone',
+    ganttTitle:'Planning Général - Vue Gantt par Zone', ganttForecast:'Prévisionnel uniquement', ganttHint:'\ud83d\udc46 Cliquez sur une zone du Gantt ci-dessus pour filtrer l\u2019onglet Suivi par filiale', scurveTitle:'Étapes cumulées - Courbe en S', scurveSub:'15 mai 2026 - objectif : {N} étapes', rgToday:'Aujourd\u2019hui', rgEmpty:'Aucune filiale avec dates assignées. Utilisez le bouton "Assigner des dates".',
     months:['Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.','Jan.'],
     monthsFull:['Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre','Janvier 2027'],
     detailTitle:'Suivi Détaillé par Filiale', legendTitle:'Étapes suivies',
@@ -1240,7 +1240,10 @@ function renderRealGantt() {
   });
 
   if(activeSubs.length === 0) {
-    body.innerHTML = '<p style="font-size:12px;color:#aaa;font-style:italic;padding:16px 0">No subsidiaries with dates assigned. Use the "Assign dates" button.</p>';
+    var pEmpty = document.createElement('p');
+    pEmpty.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:16px 0';
+    pEmpty.textContent = t('rgEmpty');
+    body.appendChild(pEmpty);
     return;
   }
 
@@ -1265,7 +1268,7 @@ function renderRealGantt() {
   var hSpacer = document.createElement('div'); hSpacer.style.cssText = 'width:'+LABEL_W+'px;flex-shrink:0;';
   headerRow.appendChild(hSpacer);
   var hBar = document.createElement('div'); hBar.style.cssText = 'flex:1;position:relative;height:16px;';
-  var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var mNames = lang==='fr' ? ['Jan','F\u00e9v','Mar','Avr','Mai','Juin','Juil','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var dc = new Date(minDate); dc.setDate(1);
   while(dc <= new Date(maxDate)) {
     var iso = dc.toISOString().split('T')[0];
@@ -1276,8 +1279,6 @@ function renderRealGantt() {
     hBar.appendChild(tick); dc.setMonth(dc.getMonth()+1);
   }
   headerRow.appendChild(hBar); body.appendChild(headerRow);
-
-  var stepColors = ['#2E5FA3','#0F6E56','#F4B942','#854F0B','#534AB7'];
 
   activeSubs.forEach(function(item) {
     var row = document.createElement('div');
@@ -1314,7 +1315,7 @@ function renderRealGantt() {
       var d = stepDate(v); if(!d) return;
       var dp = (daysBetween(minDate, d) / totalDays * 100).toFixed(2);
       var dot = document.createElement('div');
-      dot.style.cssText = 'position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:'+(item.isCompleted?'#70AD47':stepColors[idx%stepColors.length])+';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);left:'+dp+'%;z-index:3;cursor:default;';
+      dot.style.cssText = 'position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:'+(item.isCompleted?'#70AD47':'#2E5FA3')+';border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);left:'+dp+'%;z-index:3;cursor:default;';
       dot.title = item.sub + ' - Step ' + st.num + ' - ' + d;
       area.appendChild(dot);
     });
@@ -1327,9 +1328,17 @@ function renderRealGantt() {
   footer.appendChild(fSpacer);
   var fBar = document.createElement('div'); fBar.style.cssText = 'flex:1;position:relative;';
   var todayTxt = document.createElement('span');
-  todayTxt.textContent = 'Today - ' + today;
+  todayTxt.textContent = t('rgToday') + ' - ' + today;
   todayTxt.style.cssText = 'position:absolute;left:'+todayPct+'%;font-size:10px;color:rgba(200,0,0,0.6);transform:translateX(-50%);white-space:nowrap;';
   fBar.appendChild(todayTxt); footer.appendChild(fBar); body.appendChild(footer);
+
+  var rgLegend = document.createElement('div');
+  rgLegend.style.cssText = 'display:flex;gap:18px;margin-top:10px;font-size:11px;color:#666;';
+  rgLegend.innerHTML = '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#2E5FA3;vertical-align:middle;margin-right:5px"></span>'
+    + (lang==='fr' ? 'En cours' : 'In progress') + '</span>'
+    + '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#70AD47;vertical-align:middle;margin-right:5px"></span>'
+    + (lang==='fr' ? 'Terminee (5/5)' : 'Completed (5/5)') + '</span>';
+  body.appendChild(rgLegend);
 }
 
 function renderSCurve() {
@@ -1361,6 +1370,9 @@ function renderSCurve() {
     });
   });
 
+  var scSub = document.getElementById('scurve-subtitle');
+  if(scSub) scSub.textContent = t('scurveSub').replace('{N}', totalPossible);
+
   if(Object.keys(eventsByDay).length === 0) {
     var msg = document.createElement('p');
     msg.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:16px 0';
@@ -1380,16 +1392,35 @@ function renderSCurve() {
   Object.keys(eventsByDay).forEach(function(d) {
     if(allDates.indexOf(d) === -1) allDates.push(d);
   });
+
+  // Extend the timeline to project end (weekly points) so the S-baseline is fully visible
+  var startMs = new Date(START).getTime();
+  for(var dd = 7; dd <= TOTAL_DAYS; dd += 7) {
+    var fd = new Date(startMs + dd * 86400000).toISOString().split('T')[0];
+    if(allDates.indexOf(fd) === -1) allDates.push(fd);
+  }
+  var endDate = new Date(startMs + TOTAL_DAYS * 86400000).toISOString().split('T')[0];
+  if(allDates.indexOf(endDate) === -1) allDates.push(endDate);
   allDates.sort();
 
+  var todayStr = new Date().toISOString().split('T')[0];
+
+  // Actual curve: cumulative, stops at today (null afterwards)
   var cum = 0;
   var actualData = allDates.map(function(d) {
     cum += (eventsByDay[d] || 0);
-    return cum;
+    return d <= todayStr ? cum : null;
   });
 
+  // S-shaped theoretical baseline (logistic): slow start, steep middle, plateau at target
+  var K = 10 / TOTAL_DAYS;           // steepness
+  var T0 = TOTAL_DAYS / 2;           // inflection at mid-project
+  function logistic(t) { return 1 / (1 + Math.exp(-K * (t - T0))); }
+  var L0 = logistic(0), L1 = logistic(TOTAL_DAYS);
   var baselineData = allDates.map(function(d) {
-    return Math.round(daysBetween(START, d) / TOTAL_DAYS * totalPossible);
+    var t = daysBetween(START, d);
+    var norm = (logistic(t) - L0) / (L1 - L0);   // exact 0 at start, exact 1 at end
+    return Math.round(norm * totalPossible);
   });
 
   var radii = allDates.map(function(d) { return eventsByDay[d] ? 6 : 0; });
@@ -1484,7 +1515,8 @@ function renderSCurve() {
           pointBackgroundColor: ptColors,
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
-          pointHoverRadius: 8
+          pointHoverRadius: 8,
+          spanGaps: false
         },
         {
           label: 'Baseline',
@@ -1541,11 +1573,11 @@ function renderSCurve() {
       },
       scales: {
         x: { grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 10 }, maxRotation: 45 } },
-        y: { min: 0, max: totalPossible + 5, grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 11 } } },
+        y: { min: 0, max: totalPossible, grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 11 } } },
         y1: {
           position: 'right',
           min: 0,
-          max: totalPossible + 5,
+          max: totalPossible,
           grid: { drawOnChartArea: false },
           ticks: {
             color: '#2a78d6',
@@ -2128,6 +2160,9 @@ function setLang(l) {
 function applyLang() {
   var ids={'h-title':'hTitle','h-sub':'hSub','h-meta':'hMeta','tab-btn-summary':'tabOverview','tab-btn-detail':'tabDetail','tab-btn-comms':'tabComms','tab-btn-workflow':'tabWorkflow','tab-btn-notes':'tabNotes','card-total-lbl':'cardTotal','card-done-lbl':'cardDone','card-prog-lbl':'cardProg','card-pend-lbl':'cardPend','gantt-title':'ganttTitle','detail-title':'detailTitle','legend-title':'legendTitle'};
   Object.entries(ids).forEach(function(e){var el=document.getElementById(e[0]);if(el)el.textContent=t(e[1]);});
+  var fb=document.getElementById('gantt-forecast-badge'); if(fb) fb.textContent=t('ganttForecast');
+  var gh=document.getElementById('gantt-click-hint'); if(gh) gh.textContent=t('ganttHint');
+  var sct=document.getElementById('scurve-title'); if(sct) sct.textContent=t('scurveTitle');
   document.getElementById('filter-search').placeholder=t('filterSearch');
   var hint=document.getElementById('gantt-click-hint');
   if(hint) hint.textContent=lang==='fr'?'👆 Cliquez sur une barre du Gantt pour filtrer le Détail par Filiale':'👆 Click a zone in the Gantt above to filter the Subsidiary Detail tab';
