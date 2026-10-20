@@ -350,7 +350,7 @@
       <span id="lock-label">View only</span>
       <span class="lock-tip" id="lock-tip">Press Ctrl+Shift+A to unlock editing</span>
     </div>
-    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">45 subsidiaries · 8 zones · 9 months</div>
+    <div style="text-align:right;font-size:12px;opacity:0.8" id="h-meta">44 subsidiaries · 8 zones · 9 months</div>
     <div class="lang-toggle">
       <button class="lang-btn" onclick="setLang('fr')">FR</button>
       <button class="lang-btn active" onclick="setLang('en')">EN</button>
@@ -370,10 +370,10 @@
 
   <div class="tab-panel active" id="tab-summary">
     <div class="cards">
-      <div class="card card-clickable" onclick="filterByStatus('')"><div class="label" id="card-total-lbl">Total Subsidiaries</div><div class="value">45</div></div>
+      <div class="card card-clickable" onclick="filterByStatus('')"><div class="label" id="card-total-lbl">Total Subsidiaries</div><div class="value">44</div></div>
       <div class="card green card-clickable" onclick="filterByStatus('completed')"><div class="label" id="card-done-lbl">Completed</div><div class="value" id="cnt-done">0</div></div>
       <div class="card orange card-clickable" onclick="filterByStatus('in-progress')"><div class="label" id="card-prog-lbl">In Progress</div><div class="value" id="cnt-progress">0</div></div>
-      <div class="card card-clickable" onclick="filterByStatus('not-started')"><div class="label" id="card-pend-lbl">Not Started</div><div class="value" id="cnt-pending">45</div></div>
+      <div class="card card-clickable" onclick="filterByStatus('not-started')"><div class="label" id="card-pend-lbl">Not Started</div><div class="value" id="cnt-pending">44</div></div>
     </div>
     <div class="gantt-wrap">
       <div class="header" style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px">
@@ -678,19 +678,15 @@ const REGIONS = [
 
 const GAP_ANALYSIS_URLS = {
   "AFR/AFO|Ghana":              "https://izisafety.github.io/Gap-Analysis-Ghana/",
-  "AFR/AFO|Togo":               "https://izisafety.github.io/Gap-analysis-Togo/",
-  "AFR/AFO|Guinée Conakry":     "https://izisafety.github.io/Gap-Analysis-Guin-e-Conakry/",
-  "AFR/AFO|Cameroun":           "https://izisafety.github.io/Gap-analysis-Cameroon/",
+  "AFR/AFO|Togo":               "https://izisafety.github.io/Gap-Analysis-Togo/",
+  "AFR/AFO|Guinée Conakry":     "https://izisafety.github.io/Gap-Analysis-Guinea-Conakry/",
+  "AFR/AFO|Cameroun":           "https://izisafety.github.io/Gap-Analysis-Cameroon/",
   "AFR/AFO|Sénégal":            "https://izisafety.github.io/Gap-Analysis-Senegal/",
   "AFR/AFO|Côte d'Ivoire":      "https://izisafety.github.io/Gap-Analysis-IvoryCoast/",
   "AFR/AFO|Gabon":              "https://izisafety.github.io/Gap-Analysis-Gabon/",
   "AFR/AFO|Guinée Equatoriale": "https://izisafety.github.io/Gap-Analysis-Equatorial-Guinea/",
   "EOMC|Réunion":               "https://izisafety.github.io/Gap-Analysis-Reunion/",
-  "EOMC|Antilles Guyane":       "https://izisafety.github.io/Gap-Analysis-Antille-Guyane/",
-  "AFR/MOI|Tunisie":       "https://izisafety.github.io/Gap-Analysis-Tunisie/",
-  "AFR/MOI|Algérie":       "https://izisafety.github.io/Gap-Analysis-Alg-rie/",
-  "AFR/MOI|Meroc":       "https://izisafety.github.io/Gap-Analysis-Maroc/",
- 
+  "EOMC|Antilles Guyane":       "https://izisafety.github.io/Gap-Analysis-Antilles-Guyane/",
 };
 
 const STEPS = [
@@ -808,10 +804,10 @@ function copyTemplate(type, l) {
 
 const T = {
   en: {
-    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'45 subsidiaries · 8 zones · 9 months',
+    hTitle:'IZI Safety  -  User Profile Harmonization', hSub:'Planning Tracker | Schedule: 28/04/2026 - 31/01/2027', hMeta:'44 subsidiaries · 8 zones · 9 months',
     tabOverview:'Overview', tabDetail:'Subsidiary Detail', tabComms:'Communications', tabWorkflow:'Workflow', tabNotes:'Friction Points',
     cardTotal:'Total Subsidiaries', cardDone:'Completed', cardProg:'In Progress', cardPend:'Not Started',
-    ganttTitle:'Provisional Schedule - Gantt View by Zone', ganttForecast:'Forecast only', ganttHint:'\ud83d\udc46 Click a zone in the Gantt above to filter the Subsidiary Detail tab', scurveTitle:'Cumulative Steps - S-Curve', scurveSub:'15 May 2026 - target: {N} steps', rgToday:'Today', rgEmpty:'No subsidiaries with dates assigned. Use the "Assign dates" button.',
+    ganttTitle:'Provisional Schedule - Gantt View by Zone', ganttForecast:'Forecast only', ganttHint:'\ud83d\udc46 Click a zone in the Gantt above to filter the Subsidiary Detail tab', scurveTitle:'Cumulative Steps - S-Curve', scurveSub:'From {D} - target: {N} steps', rgToday:'Today', rgEmpty:'No subsidiaries with dates assigned. Use the "Assign dates" button.',
     months:['Apr.','May','Jun.','Jul.','Aug.','Sep.','Oct.','Nov.','Dec.','Jan.'],
     monthsFull:['April','May','June','July','August','September','October','November','December','January 2027'],
     detailTitle:'Detailed Tracking by Subsidiary', legendTitle:'Tracked Steps',
@@ -827,10 +823,10 @@ const T = {
     notePlaceholder:'Add a note about this subsidiary…'
   },
   fr: {
-    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'45 filiales · 8 zones · 9 mois',
+    hTitle:'IZI Safety  -  Harmonisation des Profils Utilisateurs', hSub:'Planning Tracker | Calendrier : 28/04/2026 - 31/01/2027', hMeta:'44 filiales · 8 zones · 9 mois',
     tabOverview:'Vue Générale', tabDetail:'Détail par Filiale', tabComms:'Communications', tabWorkflow:'Flux', tabNotes:'Friction Points',
     cardTotal:'Total Filiales', cardDone:'Complétées', cardProg:'En cours', cardPend:'Non démarrées',
-    ganttTitle:'Planning Prévisionnel - Vue Gantt par Zone', ganttForecast:'Prévisionnel uniquement', ganttHint:'\ud83d\udc46 Cliquez sur une zone du Gantt ci-dessus pour filtrer l\u2019onglet Suivi par filiale', scurveTitle:'Étapes cumulées - Courbe en S', scurveSub:'15 mai 2026 - objectif : {N} étapes', rgToday:'Aujourd\u2019hui', rgEmpty:'Aucune filiale avec dates assignées. Utilisez le bouton "Assigner des dates".',
+    ganttTitle:'Planning Prévisionnel - Vue Gantt par Zone', ganttForecast:'Prévisionnel uniquement', ganttHint:'\ud83d\udc46 Cliquez sur une zone du Gantt ci-dessus pour filtrer l\u2019onglet Suivi par filiale', scurveTitle:'Étapes cumulées - Courbe en S', scurveSub:'Depuis le {D} - objectif : {N} étapes', rgToday:'Aujourd\u2019hui', rgEmpty:'Aucune filiale avec dates assignées. Utilisez le bouton "Assigner des dates".',
     months:['Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.','Jan.'],
     monthsFull:['Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre','Janvier 2027'],
     detailTitle:'Suivi Détaillé par Filiale', legendTitle:'Étapes suivies',
@@ -1271,13 +1267,15 @@ function renderRealGantt() {
   var hSpacer = document.createElement('div'); hSpacer.style.cssText = 'width:'+LABEL_W+'px;flex-shrink:0;';
   headerRow.appendChild(hSpacer);
   var hBar = document.createElement('div'); hBar.style.cssText = 'flex:1;position:relative;height:16px;';
-  var mNames = lang==='fr' ? ['Jan','F\u00e9v','Mar','Avr','Mai','Juin','Juil','Ao\u00fb','Sep','Oct','Nov','D\u00e9c'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var mNames = lang==='fr' ? ['Janv','F\u00e9v','Mars','Avr','Mai','Juin','Juil','Ao\u00fbt','Sept','Oct','Nov','D\u00e9c'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var monthTicks = [];   // % positions of each month start, reused as separators in every row
   var dc = new Date(minDate); dc.setDate(1);
   while(dc <= new Date(maxDate)) {
     var iso = dc.toISOString().split('T')[0];
     var pct = (daysBetween(minDate, iso) / totalDays * 100).toFixed(1);
+    if(parseFloat(pct) >= 0) monthTicks.push(pct);
     var tick = document.createElement('span');
-    tick.textContent = mNames[dc.getMonth()] + ' ' + (dc.getFullYear()+'').slice(2);
+    tick.textContent = mNames[dc.getMonth()] + ' ' + dc.getFullYear();
     tick.style.cssText = 'position:absolute;left:'+pct+'%;font-size:10px;color:#999;transform:translateX(-50%);white-space:nowrap;';
     hBar.appendChild(tick); dc.setMonth(dc.getMonth()+1);
   }
@@ -1298,6 +1296,11 @@ function renderRealGantt() {
 
     var area = document.createElement('div');
     area.style.cssText = 'flex:1;position:relative;height:100%;';
+    monthTicks.forEach(function(mt) {
+      var ml = document.createElement('div');
+      ml.style.cssText = 'position:absolute;left:'+mt+'%;top:0;bottom:0;width:0.5px;background:#e5e8ee;pointer-events:none;';
+      area.appendChild(ml);
+    });
     var todayLine = document.createElement('div');
     todayLine.style.cssText = 'position:absolute;left:'+todayPct+'%;top:0;bottom:0;width:1.5px;background:rgba(220,0,0,0.2);z-index:1;pointer-events:none;';
     area.appendChild(todayLine);
@@ -1340,7 +1343,7 @@ function renderRealGantt() {
   rgLegend.innerHTML = '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#2E5FA3;vertical-align:middle;margin-right:5px"></span>'
     + (lang==='fr' ? 'En cours' : 'In progress') + '</span>'
     + '<span><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#70AD47;vertical-align:middle;margin-right:5px"></span>'
-    + (lang==='fr' ? 'Terminee (6/6)' : 'Completed (6/6)') + '</span>';
+    + (lang==='fr' ? 'Terminee (5/5)' : 'Completed (5/5)') + '</span>';
   body.appendChild(rgLegend);
 }
 
@@ -1373,9 +1376,6 @@ function renderSCurve() {
     });
   });
 
-  var scSub = document.getElementById('scurve-subtitle');
-  if(scSub) scSub.textContent = t('scurveSub').replace('{N}', totalPossible);
-
   if(Object.keys(eventsByDay).length === 0) {
     var msg = document.createElement('p');
     msg.style.cssText = 'font-size:12px;color:#aaa;font-style:italic;padding:16px 0';
@@ -1384,59 +1384,53 @@ function renderSCurve() {
     return;
   }
 
-  var START = '2026-05-15';
-  var TOTAL_DAYS = 261;
+  var PROJECT_END = '2027-01-31';
+  var DAY = 86400000;
+  var eventDates = Object.keys(eventsByDay).sort();
+  var START = eventDates[0];
+  var startMs = Date.parse(START + 'T00:00:00Z');
+  function tOf(d) { return Math.round((Date.parse(d + 'T00:00:00Z') - startMs) / DAY); }
 
-  function daysBetween(a, b) {
-    return Math.round((new Date(b) - new Date(a)) / 86400000);
+  var scSub = document.getElementById('scurve-subtitle');
+  if(scSub) {
+    var sp = START.split('-');
+    var subMFR = ['','janv.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
+    var subMEN = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var startLbl = lang==='fr'
+      ? parseInt(sp[2]) + ' ' + subMFR[parseInt(sp[1])] + ' ' + sp[0]
+      : subMEN[parseInt(sp[1])] + ' ' + parseInt(sp[2]) + ', ' + sp[0];
+    scSub.textContent = t('scurveSub').replace('{D}', startLbl).replace('{N}', totalPossible);
   }
 
-  var allDates = [START];
-  Object.keys(eventsByDay).forEach(function(d) {
-    if(allDates.indexOf(d) === -1) allDates.push(d);
-  });
-
-  // Extend the timeline to project end (weekly points) so the S-baseline is fully visible
-  var startMs = new Date(START).getTime();
-  for(var dd = 7; dd <= TOTAL_DAYS; dd += 7) {
-    var fd = new Date(startMs + dd * 86400000).toISOString().split('T')[0];
-    if(allDates.indexOf(fd) === -1) allDates.push(fd);
-  }
-  var endDate = new Date(startMs + TOTAL_DAYS * 86400000).toISOString().split('T')[0];
-  if(allDates.indexOf(endDate) === -1) allDates.push(endDate);
-  allDates.sort();
-
-  var todayStr = new Date().toISOString().split('T')[0];
-
-  // Actual curve: cumulative, stops at today (null afterwards)
+  // ---- Actual cumulative points on a true time scale ----
+  var TARGET = totalPossible;
+  var actual = [[0, 0]];
   var cum = 0;
-  var actualData = allDates.map(function(d) {
-    cum += (eventsByDay[d] || 0);
-    return d <= todayStr ? cum : null;
+  eventDates.forEach(function(d) {
+    cum += eventsByDay[d];
+    actual.push([tOf(d), cum]);
   });
+  var last = actual[actual.length - 1];
 
-  // S-shaped theoretical baseline (logistic): slow start, steep middle, plateau at target
-  var K = 10 / TOTAL_DAYS;           // steepness
-  var T0 = TOTAL_DAYS / 2;           // inflection at mid-project
-  function logistic(t) { return 1 / (1 + Math.exp(-K * (t - T0))); }
-  var L0 = logistic(0), L1 = logistic(TOTAL_DAYS);
-  var baselineData = allDates.map(function(d) {
-    var t = daysBetween(START, d);
-    var norm = (logistic(t) - L0) / (L1 - L0);   // exact 0 at start, exact 1 at end
-    return Math.round(norm * totalPossible);
-  });
+  // ---- Projected trend: straight line continuing the recent pace ----
+  var win = actual.slice(-8);
+  var slope = 0;
+  if(win.length >= 2 && win[win.length - 1][0] > win[0][0]) {
+    slope = (win[win.length - 1][1] - win[0][1]) / (win[win.length - 1][0] - win[0][0]);
+  }
+  if(!(slope > 0) && last[0] > 0) slope = last[1] / last[0];
 
-  var radii = allDates.map(function(d) { return eventsByDay[d] ? 6 : 0; });
-  var ptColors = allDates.map(function(d) { return eventsByDay[d] ? '#2a78d6' : 'transparent'; });
-
-  var mFR = ['','Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
-  var mEN = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var mNames = lang === 'fr' ? mFR : mEN;
-
-  var displayLabels = allDates.map(function(d) {
-    var p = d.split('-');
-    return mNames[parseInt(p[1])] + ' ' + parseInt(p[2]);
-  });
+  var todayT = tOf(new Date().toISOString().split('T')[0]);
+  var projT = (last[1] < TARGET && slope > 0) ? last[0] + (TARGET - last[1]) / slope : null;
+  var endT = Math.max(projT !== null ? projT : last[0], todayT, last[0] + 7);
+  endT = Math.min(endT, 3 * 365);
+  var T_MAX = Math.ceil(endT / 7) * 7 + 7;
+  var projection = null;
+  if(projT !== null) {
+    projection = projT <= T_MAX
+      ? [last, [projT, TARGET]]
+      : [last, [T_MAX, last[1] + slope * (T_MAX - last[0])]];
+  }
 
   // Progress badge - current cumulative + percentage
   var doneTotal = 0;
@@ -1473,124 +1467,180 @@ function renderSCurve() {
   badge.style.flexWrap = 'wrap';
   body.appendChild(badge);
 
-  var chartDiv = document.createElement('div');
-  chartDiv.style.cssText = 'position:relative;width:100%;height:300px;';
-  var canvas = document.createElement('canvas');
-  canvas.id = 'scurve-canvas-' + Date.now();
-  chartDiv.appendChild(canvas);
-  body.appendChild(chartDiv);
+  // ---- Colours ----
+  var C = { blue:'#2f6fed', blueFill:'rgba(47,111,237,0.08)', orange:'#e08a2c', target:'#b8bcc6',
+            grid:'#edeff3', axis:'#d3d7e0', text2:'#6b7280', text3:'#9aa1ad', card:'#ffffff', tip:'#20242e' };
 
-  var legend = document.createElement('div');
-  legend.style.cssText = 'display:flex;gap:20px;margin-top:12px;font-size:11px;color:#666;flex-wrap:wrap;';
-  legend.innerHTML = '<span><span style="display:inline-block;width:20px;height:3px;background:#2a78d6;vertical-align:middle;border-radius:2px;margin-right:5px"></span>'
-    + (lang==='fr' ? 'Progression reelle' : 'Actual progress') + '</span>'
-    + '<span><span style="display:inline-block;width:20px;height:0;border-top:2px dashed #e8a020;vertical-align:middle;margin-right:5px"></span>'
-    + (lang==='fr' ? 'Baseline theorique' : 'Theoretical baseline') + '</span>'
-    + '<span><span style="display:inline-block;width:20px;height:0;border-top:2px dashed #c3c2b7;vertical-align:middle;margin-right:5px"></span>'
-    + (lang==='fr' ? 'Objectif (' + totalPossible + ')' : 'Target (' + totalPossible + ')') + '</span>';
-  body.appendChild(legend);
+  // ---- Containers ----
+  var area = document.createElement('div');
+  area.style.cssText = 'position:relative;margin-top:10px;';
+  body.appendChild(area);
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var W = 1400, H = 400;
+  var M = { top: 36, right: 44, bottom: 40, left: 38 };
+  var plotW = W - M.left - M.right, plotH = H - M.top - M.bottom;
+  var svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.style.cssText = 'display:block;width:100%;height:auto;overflow:visible;font-family:Arial,sans-serif;';
+  area.appendChild(svg);
+  var tooltip = document.createElement('div');
+  tooltip.style.cssText = 'position:absolute;pointer-events:none;background:' + C.tip + ';color:#f5f6f9;font-size:11.5px;line-height:1.5;padding:8px 10px;border-radius:8px;box-shadow:0 8px 24px rgba(20,24,33,.15);opacity:0;transform:translate(-50%,-100%);transition:opacity .08s ease;white-space:nowrap;z-index:5;';
+  area.appendChild(tooltip);
 
-  if(typeof Chart === 'undefined') {
-    // Chart.js not loaded yet — retry once it is
-    var retryScript = document.createElement('script');
-    retryScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
-    retryScript.onload = function() { renderSCurve(); };
-    document.head.appendChild(retryScript);
-    return;
+  function x(tt) { return M.left + (tt / T_MAX) * plotW; }
+  function y(v) { return M.top + plotH - (v / TARGET) * plotH; }
+  function el(tag, attrs) {
+    var n = document.createElementNS(svgNS, tag);
+    for(var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function label(xp, yp, txt, anchor, extra) {
+    var n = el('text', { x: xp, y: yp, 'text-anchor': anchor || 'middle', 'font-size': '10', fill: C.text3 });
+    if(extra) for(var k in extra) n.setAttribute(k, extra[k]);
+    n.textContent = txt;
+    svg.appendChild(n);
   }
 
-  if(window._sCurveChart) { try { window._sCurveChart.destroy(); } catch(ignore) {} }
+  // ---- Y grid: every 10% (left = steps, right = %) ----
+  for(var gi = 0; gi <= 10; gi++) {
+    var gv = TARGET * gi / 10;
+    svg.appendChild(el('line', { x1: M.left, x2: W - M.right, y1: y(gv), y2: y(gv), stroke: C.grid, 'stroke-width': 1 }));
+    label(M.left - 8, y(gv) + 3, Math.round(gv), 'end');
+    label(W - M.right + 8, y(gv) + 3, (gi * 10) + '%', 'start', { fill: C.blue, 'font-weight': '700' });
+  }
 
-  window._sCurveChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: displayLabels,
-      datasets: [
-        {
-          label: 'Actual',
-          data: actualData,
-          borderColor: '#2a78d6',
-          backgroundColor: 'rgba(42,120,214,0.07)',
-          borderWidth: 2.5,
-          fill: true,
-          tension: 0.05,
-          pointRadius: radii,
-          pointBackgroundColor: ptColors,
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointHoverRadius: 8,
-          spanGaps: false
-        },
-        {
-          label: 'Baseline',
-          data: baselineData,
-          borderColor: '#e8a020',
-          borderWidth: 2,
-          borderDash: [6, 4],
-          pointRadius: 0,
-          fill: false,
-          tension: 0
-        },
-        {
-          label: 'Target',
-          data: allDates.map(function() { return totalPossible; }),
-          borderColor: '#c3c2b7',
-          borderWidth: 1.5,
-          borderDash: [6, 4],
-          pointRadius: 0,
-          fill: false
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: function(items) { return allDates[items[0].dataIndex]; },
-            label: function(ctx) {
-              var v = ctx.parsed.y;
-              if(ctx.datasetIndex === 0) {
-                var added = eventsByDay[allDates[ctx.dataIndex]] || 0;
-                var pct = Math.round(v / totalPossible * 100);
-                return lang==='fr'
-                  ? 'Cumule: ' + v + ' etapes (' + pct + '%)' + (added ? ' | +' + added + ' ce jour' : '')
-                  : 'Cumulative: ' + v + ' steps (' + pct + '%)' + (added ? ' | +' + added + ' this day' : '');
-              }
-              if(ctx.datasetIndex === 1) return 'Baseline: ' + v + (lang==='fr' ? ' etapes' : ' steps');
-              return (lang==='fr' ? 'Objectif: ' : 'Target: ') + totalPossible;
-            },
-            afterBody: function(items) {
-              if(items[0].datasetIndex !== 0) return [];
-              var subs = subsByDay[allDates[items[0].dataIndex]];
-              if(!subs || subs.length === 0) return [];
-              var lines = [lang==='fr' ? '- Ce jour:' : '- This day:'];
-              subs.slice(0, 8).forEach(function(s) { lines.push('  ' + s); });
-              if(subs.length > 8) lines.push('  +' + (subs.length - 8) + ' more');
-              return lines;
-            }
-          }
-        }
-      },
-      scales: {
-        x: { grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 10 }, maxRotation: 45 } },
-        y: { min: 0, max: totalPossible, grid: { color: '#ebebeb' }, ticks: { color: '#888', font: { size: 11 } } },
-        y1: {
-          position: 'right',
-          min: 0,
-          max: totalPossible,
-          grid: { drawOnChartArea: false },
-          ticks: {
-            color: '#2a78d6',
-            font: { size: 11, weight: 'bold' },
-            callback: function(value) { return Math.round(value / totalPossible * 100) + '%'; }
-          }
-        }
-      }
+  // ---- X axis: constant calendar scale, tick on the 1st of each month ----
+  var locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+  var tickFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  var xTicks = [0];
+  var cur = new Date(startMs);
+  cur.setUTCDate(1);
+  cur.setUTCMonth(cur.getUTCMonth() + 1);
+  while(true) {
+    var tt = Math.round((cur.getTime() - startMs) / DAY);
+    if(tt > T_MAX) break;
+    if(tt >= 8) xTicks.push(tt);
+    cur.setUTCMonth(cur.getUTCMonth() + 1);
+  }
+  xTicks.forEach(function(tt) {
+    var px = x(tt);
+    var d = new Date(startMs + tt * DAY);
+    var isYear = d.getUTCMonth() === 0 && d.getUTCDate() === 1;
+    if(isYear) {
+      svg.appendChild(el('line', { x1: px, x2: px, y1: M.top, y2: M.top + plotH, stroke: C.axis, 'stroke-width': 1.5 }));
+      label(px, M.top + plotH + 30, d.getUTCFullYear(), 'middle', { 'font-weight': '700', fill: C.text2 });
+    } else {
+      svg.appendChild(el('line', { x1: px, x2: px, y1: M.top, y2: M.top + plotH, stroke: C.grid, 'stroke-width': 1 }));
+    }
+    label(px, M.top + plotH + 18, tickFmt.format(d));
+  });
+
+  // Axes + target line
+  svg.appendChild(el('line', { x1: M.left, x2: M.left, y1: M.top, y2: M.top + plotH, stroke: C.axis, 'stroke-width': 1 }));
+  svg.appendChild(el('line', { x1: M.left, x2: W - M.right, y1: M.top + plotH, y2: M.top + plotH, stroke: C.axis, 'stroke-width': 1 }));
+  svg.appendChild(el('line', { x1: M.left, x2: W - M.right, y1: y(TARGET), y2: y(TARGET), stroke: C.target, 'stroke-width': 1.2, 'stroke-dasharray': '4 4' }));
+
+  function pathFrom(data) {
+    return data.map(function(p, i) { return (i === 0 ? 'M' : 'L') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); }).join(' ');
+  }
+
+  // ---- Projected trend + completion marker ----
+  if(projection) {
+    svg.appendChild(el('path', { d: pathFrom(projection), fill: 'none', stroke: C.orange, 'stroke-width': 1.6, 'stroke-dasharray': '5 4', 'stroke-linecap': 'round' }));
+    if(projT <= T_MAX) {
+      var projDate = new Date(startMs + projT * DAY);
+      var dom = projDate.getUTCDate();
+      var monthYear = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(projDate);
+      var when = lang === 'fr'
+        ? (dom <= 10 ? 'D\u00e9but ' : dom <= 20 ? 'Mi-' : 'Fin ') + monthYear
+        : (dom <= 10 ? 'Early ' : dom <= 20 ? 'Mid ' : 'Late ') + monthYear;
+      svg.appendChild(el('line', { x1: x(projT), x2: x(projT), y1: M.top, y2: y(TARGET), stroke: C.orange, 'stroke-width': 1, 'stroke-dasharray': '2 4', opacity: '0.5' }));
+      svg.appendChild(el('circle', { cx: x(projT), cy: y(TARGET), r: 3.2, fill: C.orange }));
+      var lx = Math.min(x(projT), W - M.right - 4);
+      var pl = el('text', { x: lx, y: 14, 'text-anchor': 'end', fill: C.orange, 'font-weight': '700', 'font-size': '11' });
+      var l1 = el('tspan', { x: lx, dy: 0 });
+      l1.textContent = lang === 'fr' ? 'Fin projet\u00e9e' : 'Projected completion';
+      var l2 = el('tspan', { x: lx, dy: 13 });
+      l2.textContent = when;
+      pl.appendChild(l1); pl.appendChild(l2);
+      svg.appendChild(pl);
+    }
+  }
+
+  // ---- Actual: area, line, sparse dots, last point emphasis ----
+  svg.appendChild(el('path', { d: pathFrom(actual) + ' L ' + x(last[0]).toFixed(1) + ' ' + (M.top + plotH) + ' L ' + x(0).toFixed(1) + ' ' + (M.top + plotH) + ' Z', fill: C.blueFill, stroke: 'none' }));
+  svg.appendChild(el('path', { d: pathFrom(actual), fill: 'none', stroke: C.blue, 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  actual.forEach(function(p, i) {
+    if(i > 0 && (i % 4 === 0) && i !== actual.length - 1) {
+      svg.appendChild(el('circle', { cx: x(p[0]), cy: y(p[1]), r: 2.8, fill: C.card, stroke: C.blue, 'stroke-width': 1.6 }));
     }
   });
+  svg.appendChild(el('circle', { cx: x(last[0]), cy: y(last[1]), r: 4, fill: C.blue }));
+
+  // ---- Legend ----
+  var legend = document.createElement('div');
+  legend.style.cssText = 'display:flex;gap:18px;flex-wrap:wrap;padding:10px 4px 4px 4px;font-size:11.5px;color:' + C.text2 + ';';
+  function dash(col) { return '<span style="display:inline-block;width:16px;height:2px;background:repeating-linear-gradient(to right,' + col + ' 0 5px,transparent 5px 9px);vertical-align:middle;margin-right:6px"></span>'; }
+  legend.innerHTML =
+    '<span><span style="display:inline-block;width:16px;height:2px;border-radius:2px;background:' + C.blue + ';vertical-align:middle;margin-right:6px"></span>' + (lang === 'fr' ? 'Progression r\u00e9elle' : 'Actual progress') + '</span>' +
+    '<span>' + dash(C.orange) + (lang === 'fr' ? 'Tendance projet\u00e9e' : 'Projected trend') + '</span>' +
+    '<span>' + dash(C.target) + (lang === 'fr' ? 'Objectif (' : 'Target (') + TARGET + ')</span>';
+  body.appendChild(legend);
+
+  // ---- Hover: crosshair + tooltip ----
+  var cross = el('line', { y1: M.top, y2: M.top + plotH, stroke: C.axis, 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: 0 });
+  svg.appendChild(cross);
+  var hdBase = el('circle', { r: 4, fill: C.orange, stroke: C.card, 'stroke-width': 2, opacity: 0 });
+  var hdAct = el('circle', { r: 4, fill: C.blue, stroke: C.card, 'stroke-width': 2, opacity: 0 });
+  svg.appendChild(hdBase); svg.appendChild(hdAct);
+  var overlay = el('rect', { x: M.left, y: M.top, width: plotW, height: plotH, fill: 'transparent' });
+  svg.appendChild(overlay);
+
+  function interp(data, tt) {
+    if(tt <= data[0][0]) return data[0][1];
+    if(tt >= data[data.length - 1][0]) return data[data.length - 1][1];
+    for(var i = 0; i < data.length - 1; i++) {
+      if(tt >= data[i][0] && tt <= data[i + 1][0]) {
+        var span = data[i + 1][0] - data[i][0];
+        if(span === 0) return data[i + 1][1];
+        return data[i][1] + (tt - data[i][0]) / span * (data[i + 1][1] - data[i][1]);
+      }
+    }
+    return null;
+  }
+  var dateFmt = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+  function onMove(evt) {
+    var rect = svg.getBoundingClientRect();
+    var mx = (evt.clientX - rect.left) * (W / rect.width);
+    var tt = Math.max(0, Math.min(T_MAX, ((mx - M.left) / plotW) * T_MAX));
+    var px = x(tt);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('opacity', 1);
+    var vAct = tt <= last[0] ? interp(actual, tt) : null;
+    var vBase = (projection && tt >= last[0]) ? interp(projection, tt) : null;
+    if(vAct !== null) { hdAct.setAttribute('cx', px); hdAct.setAttribute('cy', y(vAct)); hdAct.setAttribute('opacity', 1); }
+    else hdAct.setAttribute('opacity', 0);
+    if(vBase !== null) { hdBase.setAttribute('cx', px); hdBase.setAttribute('cy', y(vBase)); hdBase.setAttribute('opacity', 1); }
+    else hdBase.setAttribute('opacity', 0);
+    var rows = '<div style="margin-bottom:3px;"><b>' + dateFmt.format(new Date(startMs + tt * DAY)) + '</b></div>';
+    function row(col, name, v) {
+      return '<div style="display:flex;gap:10px;justify-content:space-between"><span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:' + col + ';margin-right:5px"></span>' + name + '</span><b>' + Math.round(v) + ' (' + Math.round(v / TARGET * 100) + '%)</b></div>';
+    }
+    if(vAct !== null) rows += row(C.blue, lang === 'fr' ? 'R\u00e9el' : 'Actual', vAct);
+    if(vBase !== null) rows += row(C.orange, lang === 'fr' ? 'Projet\u00e9' : 'Projected', vBase);
+    tooltip.innerHTML = rows;
+    tooltip.style.left = ((px / W) * rect.width) + 'px';
+    tooltip.style.top = ((y(Math.max(vAct || 0, vBase || 0)) / H) * rect.height - 10) + 'px';
+    tooltip.style.opacity = 1;
+  }
+  function onLeave() {
+    cross.setAttribute('opacity', 0); hdAct.setAttribute('opacity', 0); hdBase.setAttribute('opacity', 0);
+    tooltip.style.opacity = 0;
+  }
+  overlay.addEventListener('mousemove', onMove);
+  overlay.addEventListener('mouseleave', onLeave);
+  overlay.addEventListener('touchmove', function(ev) { onMove(ev.touches[0]); }, { passive: true });
+  overlay.addEventListener('touchend', onLeave);
 }
 
 
